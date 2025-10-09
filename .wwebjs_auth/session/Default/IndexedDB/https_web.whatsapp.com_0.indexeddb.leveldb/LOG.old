@@ -1,0 +1,56 @@
+2025/09/19-11:06:57.540 2ec0 Reusing MANIFEST C:\Users\apiwhats\Desktop\DESKPHARMA_WHATS_CLONE\server\.wwebjs_auth\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/09/19-11:06:57.541 2ec0 Recovering log #2135
+2025/09/19-11:06:57.684 2ec0 Reusing old log C:\Users\apiwhats\Desktop\DESKPHARMA_WHATS_CLONE\server\.wwebjs_auth\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/002135.log 
+2025/09/19-11:07:01.826 33f8 Level-0 table #2158: started
+2025/09/19-11:07:01.850 33f8 Level-0 table #2158: 759410 bytes OK
+2025/09/19-11:07:01.855 33f8 Delete type=0 #2135
+2025/09/19-11:07:01.856 33f8 Manual compaction at level-0 from '\x005\x00\x00\x00' @ 72057594037927935 : 1 .. '\x006\x00\x00\x00' @ 0 : 0; will stop at '\x005\x00\x00\x05' @ 4605130 : 1
+2025/09/19-11:07:01.856 33f8 Compacting 1@0 + 0@1 files
+2025/09/19-11:07:01.883 33f8 Generated table #2159@0: 11793 keys, 189676 bytes
+2025/09/19-11:07:01.892 33f8 Generated table #2160@0: 1659 keys, 94242 bytes
+2025/09/19-11:07:01.892 33f8 Compacted 1@0 + 0@1 files => 283918 bytes
+2025/09/19-11:07:01.895 33f8 compacted to: files[ 0 2 17 0 0 0 0 ]
+2025/09/19-11:07:01.895 33f8 Delete type=2 #2158
+2025/09/19-11:07:01.895 33f8 Manual compaction at level-0 from '\x005\x00\x00\x05' @ 4605130 : 1 .. '\x006\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/09/19-11:07:03.859 2ec0 Compacting 1@1 + 7@2 files
+2025/09/19-11:07:03.995 2ec0 Generated table #2161@1: 30685 keys, 2245698 bytes
+2025/09/19-11:07:04.089 2ec0 Generated table #2162@1: 8304 keys, 2176307 bytes
+2025/09/19-11:07:04.137 2ec0 Generated table #2163@1: 5915 keys, 2128316 bytes
+2025/09/19-11:07:04.240 2ec0 Generated table #2164@1: 50883 keys, 2185664 bytes
+2025/09/19-11:07:04.372 2ec0 Generated table #2165@1: 104913 keys, 2255794 bytes
+2025/09/19-11:07:04.511 2ec0 Generated table #2166@1: 105476 keys, 2256603 bytes
+2025/09/19-11:07:04.570 2ec0 Generated table #2167@1: 46655 keys, 1076769 bytes
+2025/09/19-11:07:04.570 2ec0 Compacted 1@1 + 7@2 files => 14325151 bytes
+2025/09/19-11:07:04.573 2ec0 compacted to: files[ 0 1 17 0 0 0 0 ]
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2139
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2140
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2141
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2142
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2143
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2144
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2145
+2025/09/19-11:07:04.573 2ec0 Delete type=2 #2160
+2025/09/19-11:07:04.843 2ec0 Compacting 1@1 + 10@2 files
+2025/09/19-11:07:04.954 2ec0 Generated table #2168@1: 86548 keys, 2236697 bytes
+2025/09/19-11:07:05.036 2ec0 Generated table #2169@1: 90016 keys, 2253264 bytes
+2025/09/19-11:07:05.098 2ec0 Generated table #2170@1: 32885 keys, 2190649 bytes
+2025/09/19-11:07:05.116 2ec0 Generated table #2171@1: 384 keys, 2125449 bytes
+2025/09/19-11:07:05.139 2ec0 Generated table #2172@1: 365 keys, 2120290 bytes
+2025/09/19-11:07:05.164 2ec0 Generated table #2173@1: 369 keys, 2128908 bytes
+2025/09/19-11:07:05.182 2ec0 Generated table #2174@1: 356 keys, 2123125 bytes
+2025/09/19-11:07:05.208 2ec0 Generated table #2175@1: 2320 keys, 2150027 bytes
+2025/09/19-11:07:05.234 2ec0 Generated table #2176@1: 2201 keys, 2147506 bytes
+2025/09/19-11:07:05.286 2ec0 Generated table #2177@1: 21638 keys, 1692257 bytes
+2025/09/19-11:07:05.286 2ec0 Compacted 1@1 + 10@2 files => 21168172 bytes
+2025/09/19-11:07:05.289 2ec0 compacted to: files[ 0 0 17 0 0 0 0 ]
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2146
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2147
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2148
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2149
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2150
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2151
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2152
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2153
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2154
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2155
+2025/09/19-11:07:05.289 2ec0 Delete type=2 #2159
