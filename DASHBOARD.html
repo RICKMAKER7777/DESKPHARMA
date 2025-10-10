@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeskPharma - Sistema de Gestão</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <style>
+        :root {
+            --primary: #2D9CDB;
+            --secondary: #27AE60;
+            --accent: #F2994A;
+            --dark: #333333;
+            --light: #F2F2F2;
+            --danger: #EB5757;
+            --success: #6FCF97;
+            --warning: #F2C94C;
+            --gray-1: #828282;
+            --gray-2: #4F4F4F;
+            --gray-3: #BDBDBD;
+            --sidebar-width: 280px;
+            --header-height: 70px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: var(--light);
+        }
+
+        /* Layout Principal */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--dark);
+            color: white;
+            transition: all 0.3s ease;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .dark-mode .sidebar {
+            background: #222;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header h2 i {
+            color: var(--primary);
+        }
+
+        .sidebar-menu {
+            padding: 1rem 0;
+        }
+
+        .menu-item {
+            padding: 0.9rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .menu-item.active {
+            background: rgba(255, 255, 255, 0.1);
+            border-left-color: var(--primary);
+        }
+
+        .menu-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Conteúdo Principal */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            transition: all 0.3s ease;
+        }
+
+        .header {
+            height: var(--header-height);
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .dark-mode .header {
+            background: #252525;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: var(--gray-2);
+        }
+
+        .dark-mode .theme-toggle {
+            color: var(--light);
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .dark-mode .card {
+            background: #2a2a2a;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-header {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dark-mode .card-header {
+            border-bottom: 1px solid #444;
+        }
+
+        .card-header h3 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dark-mode .stat-card {
+            background: #2a2a2a;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-icon.primary {
+            background: rgba(45, 156, 219, 0.1);
+            color: var(--primary);
+        }
+
+        .stat-icon.success {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--success);
+        }
+
+        .stat-icon.warning {
+            background: rgba(242, 201, 76, 0.1);
+            color: var(--warning);
+        }
+
+        .stat-icon.danger {
+            background: rgba(235, 87, 87, 0.1);
+            color: var(--danger);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--gray-1);
+            font-size: 0.9rem;
+        }
+
+        .dark-mode .stat-label {
+            color: var(--gray-3);
+        }
+
+        /* Tabelas */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dark-mode th, .dark-mode td {
+            border-bottom: 1px solid #444;
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--gray-2);
+        }
+
+        .dark-mode th {
+            color: var(--gray-3);
+        }
+
+        tbody tr:hover {
+            background: rgba(45, 156, 219, 0.03);
+        }
+
+        .dark-mode tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Botões */
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2380c0;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #4caf7a;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #d32f2f;
+        }
+
+        .btn-warning {
+            background-color: var(--warning);
+            color: var(--dark);
+        }
+
+        .btn-warning:hover {
+            background-color: #e6b400;
+        }
+
+        /* Formulários */
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-3);
+            border-radius: 5px;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s;
+        }
+
+        .dark-mode .form-control {
+            background-color: #333;
+            color: var(--light);
+            border-color: #555;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(45, 156, 219, 0.2);
+        }
+
+        /* Badges */
+        .badge {
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(39, 174, 96, 0.15);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(242, 201, 76, 0.15);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(235, 87, 87, 0.15);
+            color: var(--danger);
+        }
+
+        .badge-info {
+            background: rgba(45, 156, 219, 0.15);
+            color: var(--primary);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            transition: all 0.3s;
+        }
+
+        .dark-mode .modal {
+            background: #2a2a2a;
+        }
+
+        .modal-backdrop.active .modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dark-mode .modal-header {
+            border-bottom: 1px solid #444;
+        }
+
+        .modal-header h3 {
+            font-size: 1.3rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-2);
+        }
+
+        .dark-mode .modal-close {
+            color: var(--gray-3);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .dark-mode .modal-footer {
+            border-top: 1px solid #444;
+        }
+
+        /* Responsividade */
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 0 1rem;
+            }
+            
+            .content {
+                padding: 1rem;
+            }
+        }
+
+        /* Utilitários */
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .mb-3 {
+            margin-bottom: 1.5rem;
+        }
+
+        .mt-3 {
+            margin-top: 1.5rem;
+        }
+
+        .d-flex {
+            display: flex;
+        }
+
+        .justify-content-between {
+            justify-content: space-between;
+        }
+
+        .align-items-center {
+            align-items: center;
+        }
+
+        /* Menu toggle para mobile */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-2);
+        }
+
+        .dark-mode .menu-toggle {
+            color: var(--light);
+        }
+
+        @media (max-width: 992px) {
+            .menu-toggle {
+                display: block;
+            }
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+
+        /* Página de Login */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 1rem;
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .dark-mode .login-form {
+            background: rgba(45, 45, 45, 0.9);
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--primary);
+            font-size: 2.5rem;
+        }
+
+        .login-form h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+            font-size: 1.8rem;
+        }
+
+        .dark-mode .login-form h1 {
+            color: var(--light);
+        }
+
+        .login-subtitle {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--gray-1);
+        }
+
+        .dark-mode .login-subtitle {
+            color: var(--gray-3);
+        }
+
+        .user-type-selector {
+            display: flex;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #eee;
+        }
+
+        .dark-mode .user-type-selector {
+            background: #3a3a3a;
+        }
+
+        .user-type-btn {
+            flex: 1;
+            padding: 0.8rem;
+            text-align: center;
+            background: transparent;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .user-type-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .form-footer {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .form-footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Páginas de Conteúdo */
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
+        /* Logout Button */
+        .logout-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
+		
+		/* Estilos WhatsApp */
+		.chat-messages {
+			background: #e5ddd5;
+			background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%239C92AC' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+		}
+
+		.message {
+			max-width: 70%;
+			margin-bottom: 10px;
+			padding: 8px 12px;
+			border-radius: 7.5px;
+			position: relative;
+			word-wrap: break-word;
+			box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+		}
+
+		.message.incoming {
+			background: white;
+			align-self: flex-start;
+			border-bottom-left-radius: 0;
+			margin-right: auto;
+		}
+
+		.message.outgoing {
+			background: #dcf8c6;
+			align-self: flex-end;
+			border-bottom-right-radius: 0;
+			margin-left: auto;
+		}
+
+		.message-content {
+			margin-bottom: 4px;
+			line-height: 1.4;
+		}
+
+		.message-time {
+			font-size: 0.7rem;
+			color: #999;
+			text-align: right;
+			margin-top: 2px;
+		}
+
+		.chat-messages {
+			display: flex;
+			flex-direction: column;
+			padding: 10px;
+			gap: 8px;
+		}
+
+		.conversation-item {
+			padding: 12px;
+			border-bottom: 1px solid #eee;
+			cursor: pointer;
+			transition: background-color 0.2s;
+		}
+
+		.conversation-item:hover {
+			background-color: #f8f9fa;
+		}
+
+		.conversation-item.active {
+			background-color: #e3f2fd;
+			border-left: 3px solid var(--primary);
+		}
+
+		.conversation-name {
+			font-weight: 600;
+			margin-bottom: 4px;
+		}
+
+		.conversation-preview {
+			font-size: 0.85rem;
+			color: #666;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.conversation-time {
+			font-size: 0.75rem;
+			color: #999;
+		}
+
+		.file-preview {
+			background: #f8f9fa;
+			border: 1px solid #dee2e6;
+			border-radius: 5px;
+			padding: 10px;
+			margin-bottom: 10px;
+		}
+
+		.file-preview img, .file-preview audio, .file-preview video {
+			max-width: 100%;
+			border-radius: 5px;
+		}
+
+		.audio-transcript {
+			background: #e3f2fd;
+			border-left: 3px solid var(--primary);
+			padding: 8px 12px;
+			margin-top: 5px;
+			border-radius: 0 5px 5px 0;
+			font-size: 0.9rem;
+		}
+
+    </style>
+</head>
+<body class="dark-mode">
+    <div id="app">
+        <!-- Página de Login -->
+        <div class="login-container" id="loginScreen">
+            <div class="login-form">
+                <div class="login-logo">
+                    <i class="fas fa-clinic-medical"></i>
+                </div>
+                <h1>DeskPharma</h1>
+                <p class="login-subtitle">Sistema de Gestão Farmacêutica</p>
+                
+                <div class="user-type-selector">
+                    <button class="user-type-btn active" data-type="supervisor">Supervisor</button>
+                    <button class="user-type-btn" data-type="attendant">Atendente</button>
+                    <button class="user-type-btn" data-type="delivery">Entregador</button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" class="form-control" placeholder="Seu e-mail" value="supervisor@deskpharma.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" class="form-control" placeholder="Sua senha" value="123456">
+                </div>
+                
+                <button class="btn btn-primary" style="width: 100%" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+                
+                <div class="form-footer">
+                    <a href="#" id="forgotPassword">Esqueci minha senha</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Principal -->
+        <div class="app-container" id="dashboard" style="display: none;">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2><i class="fas fa-clinic-medical"></i> DeskPharma</h2>
+                    <button class="theme-toggle" id="sidebarThemeToggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+                
+                <div class="sidebar-menu">
+                    <div class="menu-item active" data-page="dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="employees">
+                        <i class="fas fa-users"></i>
+                        <span>Funcionários</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="approvals">
+                        <i class="fas fa-clipboard-check"></i>
+                        <span>Aprovações Pendentes</span>
+                        <span class="badge badge-danger">3</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="goals">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Metas</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="deliveries">
+                        <i class="fas fa-motorcycle"></i>
+                        <span>Entregas</span>
+                        <span class="badge badge-warning">5</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="messages">
+                        <i class="fas fa-comments"></i>
+                        <span>Mensagens</span>
+                        <span class="badge badge-primary">12</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="inventory">
+                        <i class="fas fa-pills"></i>
+                        <span>Estoque</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="reports">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Relatórios</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="announcements">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Avisos</span>
+                    </div>
+                    
+                    <div class="menu-item" data-page="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Configurações</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conteúdo Principal -->
+            <div class="main-content">
+                <div class="header">
+                    <button class="menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    
+                    <div class="user-menu">
+                        <button class="theme-toggle" id="headerThemeToggle">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                        
+                        <div class="user-info">
+                            <div class="user-avatar">SM</div>
+                            <div>
+                                <div>Supervisor Master</div>
+                                <small>Supervisor</small>
+                                <button class="logout-btn" id="logoutBtn">
+                                    <i class="fas fa-sign-out-alt"></i> Sair
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <!-- Dashboard -->
+                    <div class="page-content active" id="page-dashboard">
+                        <h2 class="mb-3">Dashboard</h2>
+                        
+                        <!-- Estatísticas -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <h3>Vendas Hoje</h3>
+                                    <div class="stat-icon primary">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </div>
+                                </div>
+                                <div class="stat-value">R$ 3.458,90</div>
+                                <div class="stat-label">+12% em relação a ontem</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <h3>Entregas</h3>
+                                    <div class="stat-icon success">
+                                        <i class="fas fa-motorcycle"></i>
+                                    </div>
+                                </div>
+                                <div class="stat-value">24/30</div>
+                                <div class="stat-label">5 entregas pendentes</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <h3>Atendimentos</h3>
+                                    <div class="stat-icon warning">
+                                        <i class="fas fa-headset"></i>
+                                    </div>
+                                </div>
+                                <div class="stat-value">56</div>
+                                <div class="stat-label">8 em andamento</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <h3>Meta do Mês</h3>
+                                    <div class="stat-icon danger">
+                                        <i class="fas fa-bullseye"></i>
+                                    </div>
+                                </div>
+                                <div class="stat-value">78%</div>
+                                <div class="stat-label">Faltam 12 dias</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Aprovações Pendentes -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-clipboard-check"></i> Aprovações Pendentes</h3>
+                                <button class="btn btn-primary btn-sm">Ver Todas</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Funcionário</th>
+                                                <th>Tipo</th>
+                                                <th>Data</th>
+                                                <th>Status</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Carlos Silva</td>
+                                                <td>Cadastro</td>
+                                                <td>12/05/2023</td>
+                                                <td><span class="badge badge-warning">Pendente</span></td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm">Aprovar</button>
+                                                    <button class="btn btn-danger btn-sm">Recusar</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Ana Santos</td>
+                                                <td>Pontos</td>
+                                                <td>11/05/2023</td>
+                                                <td><span class="badge badge-warning">Pendente</span></td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm">Aprovar</button>
+                                                    <button class="btn btn-danger btn-sm">Recusar</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Pedro Almeida</td>
+                                                <td>Saída Antecipada</td>
+                                                <td>10/05/2023</td>
+                                                <td><span class="badge badge-warning">Pendente</span></td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm">Aprovar</button>
+                                                    <button class="btn btn-danger btn-sm">Recusar</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Entregas Recentes -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-motorcycle"></i> Entregas Recentes</h3>
+                                <button class="btn btn-primary btn-sm">Ver Todas</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Pedido</th>
+                                                <th>Cliente</th>
+                                                <th>Entregador</th>
+                                                <th>Status</th>
+                                                <th>Valor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>#12345</td>
+                                                <td>Maria Oliveira</td>
+                                                <td>João Motoboy</td>
+                                                <td><span class="badge badge-success">Entregue</span></td>
+                                                <td>R$ 87,50</td>
+                                            </tr>
+                                            <tr>
+                                                <td>#12346</td>
+                                                <td>José Santos</td>
+                                                <td>Carlos Entregas</td>
+                                                <td><span class="badge badge-warning">Em rota</span></td>
+                                                <td>R$ 125,90</td>
+                                            </tr>
+                                            <tr>
+                                                <td>#12347</td>
+                                                <td>Ana Costa</td>
+                                                <td>Antônio Delivery</td>
+                                                <td><span class="badge badge-danger">Pendente</span></td>
+                                                <td>R$ 64,30</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Funcionários -->
+                    <div class="page-content" id="page-employees">
+                        <h2 class="mb-3">Funcionários</h2>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-users"></i> Lista de Funcionários</h3>
+                                <button class="btn btn-primary btn-sm">Adicionar Funcionário</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Nome</th>
+                                                <th>Cargo</th>
+                                                <th>Departamento</th>
+                                                <th>Status</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Carlos Silva</td>
+                                                <td>Atendente</td>
+                                                <td>Vendas</td>
+                                                <td><span class="badge badge-success">Ativo</span></td>
+                                                <td>
+                                                    <button class="btn btn-primary btn-sm">Editar</button>
+                                                    <button class="btn btn-danger btn-sm">Desativar</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Ana Santos</td>
+                                                <td>Farmacêutico</td>
+                                                <td>Farmácia</td>
+                                                <td><span class="badge badge-success">Ativo</span></td>
+                                                <td>
+                                                    <button class="btn btn-primary btn-sm">Editar</button>
+                                                    <button class="btn btn-danger btn-sm">Desativar</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Pedro Almeida</td>
+                                                <td>Entregador</td>
+                                                <td>Logística</td>
+                                                <td><span class="badge badge-warning">Ausente</span></td>
+                                                <td>
+                                                    <button class="btn btn-primary btn-sm">Editar</button>
+                                                    <button class="btn btn-danger btn-sm">Desativar</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aprovações -->
+                    <div class="page-content" id="page-approvals">
+                        <h2 class="mb-3">Aprovações Pendentes</h2>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-clipboard-check"></i> Solicitações para Aprovação</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Funcionário</th>
+                                                <th>Tipo</th>
+                                                <th>Data</th>
+                                                <th>Detalhes</th>
+                                                <th>Status</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Carlos Silva</td>
+                                                <td>Cadastro</td>
+                                                <td>12/05/2023</td>
+                                                <td>Novo cadastro de funcionário</td>
+                                                <td><span class="badge badge-warning">Pendente</span></td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm">Aprovar</button>
+                                                    <button class="btn btn-danger btn-sm">Recusar</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Ana Santos</td>
+                                                <td>Pontos</td>
+                                                <td>11/05/2023</td>
+                                                <td>Ajuste de ponto - atraso justificado</td>
+                                                <td><span class="badge badge-warning">Pendente</span></td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm">Aprovar</button>
+                                                    <button class="btn btn-danger btn-sm">Recusar</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Pedro Almeida</td>
+                                                <td>Saída Antecipada</td>
+                                                <td>10/05/2023</td>
+                                                <td>Saída antecipada por motivo médico</td>
+                                                <td><span class="badge badge-warning">Pendente</span></td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm">Aprovar</button>
+                                                    <button class="btn btn-danger btn-sm">Recusar</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metas -->
+                    <div class="page-content" id="page-goals">
+                        <h2 class="mb-3">Metas</h2>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-bullseye"></i> Metas do Mês</h3>
+                                <button class="btn btn-primary btn-sm">Definir Nova Meta</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Meta</th>
+                                                <th>Departamento</th>
+                                                <th>Progresso</th>
+                                                <th>Prazo</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Vendas Mensais</td>
+                                                <td>Vendas</td>
+                                                <td>
+                                                    <div style="background: #eee; border-radius: 5px; height: 10px; width: 100%;">
+                                                        <div style="background: var(--success); height: 10px; border-radius: 5px; width: 78%;"></div>
+                                                    </div>
+                                                    <small>78%</small>
+                                                </td>
+                                                <td>31/05/2023</td>
+                                                <td><span class="badge badge-success">No Prazo</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Entregas no Prazo</td>
+                                                <td>Logística</td>
+                                                <td>
+                                                    <div style="background: #eee; border-radius: 5px; height: 10px; width: 100%;">
+                                                        <div style="background: var(--warning); height: 10px; border-radius: 5px; width: 65%;"></div>
+                                                    </div>
+                                                    <small>65%</small>
+                                                </td>
+                                                <td>31/05/2023</td>
+                                                <td><span class="badge badge-warning">Atenção</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Atendimento ao Cliente</td>
+                                                <td>Atendimento</td>
+                                                <td>
+                                                    <div style="background: #eee; border-radius: 5px; height: 10px; width: 100%;">
+                                                        <div style="background: var(--danger); height: 10px; border-radius: 5px; width: 45%;"></div>
+                                                    </div>
+                                                    <small>45%</small>
+                                                </td>
+                                                <td>31/05/2023</td>
+                                                <td><span class="badge badge-danger">Atrasado</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Outras páginas teriam conteúdo similar -->
+                    <div class="page-content" id="page-deliveries">
+                        <h2 class="mb-3">Entregas</h2>
+                        <div class="card">
+                            <div class="card-body">
+                                <p>Conteúdo da página de entregas será implementado aqui.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="page-content" id="page-messages">
+					<h2 class="mb-3">Mensagens WhatsApp</h2>
+					
+					<!-- Status e Controles -->
+					<div class="card mb-3">
+						<div class="card-header">
+							<h3><i class="fab fa-whatsapp" style="color: #25D366"></i> Status da Conexão</h3>
+						</div>
+						<div class="card-body">
+							<div class="d-flex justify-content-between align-items-center">
+								<div>
+									<span id="waStatusBadge" class="badge badge-danger">Desconectado</span>
+									<span id="waStatusDetail" class="text-muted ml-2">Aguardando conexão</span>
+								</div>
+								<div>
+									<button id="btnShowQR" class="btn btn-warning btn-sm">
+										<i class="fas fa-qrcode"></i> QR Code
+									</button>
+									<button id="btnReconnect" class="btn btn-primary btn-sm">
+										<i class="fas fa-sync-alt"></i> Reconectar
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="row">
+						<!-- Lista de Conversas -->
+						<div class="col-md-4">
+							<div class="card">
+								<div class="card-header">
+									<h3><i class="fas fa-comments"></i> Conversas</h3>
+								</div>
+								<div class="card-body p-0">
+									<div class="conversation-list" id="conversationList" style="max-height: 500px; overflow-y: auto;">
+										<!-- Conversas serão carregadas aqui -->
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Área de Chat -->
+						<div class="col-md-8">
+							<div class="card">
+								<div class="card-header">
+									<div class="d-flex justify-content-between align-items-center">
+										<h3 id="currentChatName">Selecione uma conversa</h3>
+										<div class="dropdown">
+											<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown">
+												<i class="fas fa-ellipsis-v"></i>
+											</button>
+											<div class="dropdown-menu">
+												<a class="dropdown-item" href="#" id="btnClearChat"><i class="fas fa-trash"></i> Limpar chat</a>
+												<a class="dropdown-item" href="#" id="btnExportChat"><i class="fas fa-download"></i> Exportar</a>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="card-body p-0">
+									<!-- Área de Mensagens -->
+									<div class="chat-messages" id="chatMessages" style="height: 400px; overflow-y: auto; padding: 15px; background: #e5ddd5; background-image: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" opacity=\"0.05\"><path fill=\"%239C92AC\" d=\"M10 50a40 40 0 1 1 80 0 40 40 0 1 1-80 0\"/></svg>'); display: flex; flex-direction: column;">
+										<div class="text-center text-muted mt-5" id="emptyChatState">
+											<i class="fas fa-comments fa-3x mb-3"></i>
+											<p>Selecione uma conversa para começar</p>
+										</div>
+									</div>
+
+									<!-- Área de Envio -->
+									<div class="chat-input p-3 border-top">
+										<div class="input-group mb-2">
+											<input type="text" id="messageInput" class="form-control" placeholder="Digite sua mensagem..." disabled>
+											<div class="input-group-append">
+												<button class="btn btn-outline-secondary" type="button" id="btnAttach">
+													<i class="fas fa-paperclip"></i>
+												</button>
+												<button class="btn btn-primary" type="button" id="btnSendMessage" disabled>
+													<i class="fas fa-paper-plane"></i>
+												</button>
+											</div>
+										</div>
+										<div id="filePreview" class="mb-2" style="display: none;">
+											<!-- Pré-visualização de arquivos -->
+										</div>
+										<input type="file" id="fileInput" style="display: none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx">
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Modal QR Code -->
+				<div class="modal fade" id="qrModal" tabindex="-1">
+					<div class="modal-dialog">
+						<div class="modal-content">
+							<div class="modal-header">
+								<h5 class="modal-title">Escaneie o QR Code</h5>
+								<button type="button" class="close" data-dismiss="modal">
+									<span>&times;</span>
+								</button>
+							</div>
+							<div class="modal-body text-center">
+								<img id="qrImage" src="" alt="QR Code" class="img-fluid mb-3">
+								<p class="text-muted">Abra o WhatsApp no seu celular, toque em ⋮ → Dispositivos vinculados → Vincular um dispositivo</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Modal Pré-visualização -->
+				<div class="modal fade" id="previewModal" tabindex="-1">
+					<div class="modal-dialog modal-lg">
+						<div class="modal-content">
+							<div class="modal-header">
+								<h5 class="modal-title">Pré-visualização</h5>
+								<button type="button" class="close" data-dismiss="modal">
+									<span>&times;</span>
+								</button>
+							</div>
+							<div class="modal-body text-center" id="previewContent">
+								<!-- Conteúdo da pré-visualização -->
+							</div>
+						</div>
+					</div>
+				</div>
+
+                    <div class="page-content" id="page-inventory">
+                        <h2 class="mb-3">Estoque</h2>
+                        <div class="card">
+                            <div class="card-body">
+                                <p>Conteúdo da página de estoque será implementado aqui.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="page-content" id="page-reports">
+                        <h2 class="mb-3">Relatórios</h2>
+                        <div class="card">
+                            <div class="card-body">
+                                <p>Conteúdo da página de relatórios será implementado aqui.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="page-content" id="page-announcements">
+                        <h2 class="mb-3">Avisos</h2>
+                        <div class="card">
+                            <div class="card-body">
+                                <p>Conteúdo da página de avisos será implementado aqui.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="page-content" id="page-settings">
+                        <h2 class="mb-3">Configurações</h2>
+                        <div class="card">
+                            <div class="card-body">
+                                <p>Conteúdo da página de configurações será implementado aqui.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sistema de Login
+        document.getElementById('loginBtn').addEventListener('click', function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (email && password) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'flex';
+            } else {
+                alert('Por favor, preencha todos os campos!');
+            }
+        });
+
+        // Alternar tipo de usuário no login
+        document.querySelectorAll('.user-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.user-type-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Sistema de Logout
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+        });
+
+        // Alternar modo escuro/claro
+        const themeToggles = document.querySelectorAll('.theme-toggle');
+        themeToggles.forEach(toggle => {
+            toggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                
+                const icon = this.querySelector('i');
+                if (document.body.classList.contains('dark-mode')) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                } else {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+            });
+        });
+
+        // Navegação entre páginas
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove a classe active de todos os itens
+                document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                // Adiciona a classe active ao item clicado
+                this.classList.add('active');
+                
+                // Esconde todas as páginas
+                document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+                
+                // Mostra a página correspondente
+                const pageId = 'page-' + this.getAttribute('data-page');
+                document.getElementById(pageId).classList.add('active');
+                
+                // Fecha o menu no mobile
+                if (window.innerWidth <= 992) {
+                    document.querySelector('.sidebar').classList.remove('active');
+                }
+            });
+        });
+
+        // Menu toggle para mobile
+        document.getElementById('menuToggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+        });
+
+        // Fechar menu ao clicar fora (para mobile)
+        document.addEventListener('click', function(event) {
+            const sidebar = document.querySelector('.sidebar');
+            const menuToggle = document.getElementById('menuToggle');
+            
+            if (window.innerWidth <= 992 && 
+                !sidebar.contains(event.target) && 
+                !menuToggle.contains(event.target) &&
+                sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Simulação de funcionalidades dos botões
+        document.querySelectorAll('.btn-success').forEach(btn => {
+            btn.addEventListener('click', function() {
+                alert('Item aprovado com sucesso!');
+            });
+        });
+
+        document.querySelectorAll('.btn-danger').forEach(btn => {
+            btn.addEventListener('click', function() {
+                alert('Item recusado!');
+            });
+        });
+
+        // Esquecer senha
+        document.getElementById('forgotPassword').addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('Um e-mail de recuperação foi enviado para o endereço cadastrado.');
+        });
+		
+		// WhatsApp Integration - CÓDIGO CORRIGIDO
+		let currentChat = null;
+		let socket = null;
+		let allConversations = [];
+
+		// Inicializar WhatsApp quando a página de mensagens for acessada
+		document.addEventListener('DOMContentLoaded', function() {
+			const observer = new MutationObserver(function(mutations) {
+				mutations.forEach(function(mutation) {
+					if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+						const messagesPage = document.getElementById('page-messages');
+						if (messagesPage.classList.contains('active')) {
+							initWhatsApp();
+						} else {
+							disconnectWhatsApp();
+						}
+					}
+				});
+			});
+
+			observer.observe(document.getElementById('page-messages'), {
+				attributes: true,
+				attributeFilter: ['class']
+			});
+		});
+
+		function initWhatsApp() {
+			const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
+			
+			try {
+				socket = io(serverUrl, { 
+					transports: ['websocket', 'polling'],
+					autoConnect: true 
+				});
+
+				setupSocketEvents();
+				updateStatus('Conectando...', 'warning');
+				
+			} catch (error) {
+				console.error('Erro ao conectar WhatsApp:', error);
+				updateStatus('Erro de conexão', 'danger');
+			}
+		}
+
+		function setupSocketEvents() {
+			socket.on('connect', () => {
+				updateStatus('Conectado ao servidor', 'success');
+				// Carregar conversas ao conectar
+				loadConversations();
+			});
+
+			socket.on('wa:qr', (data) => {
+				document.getElementById('qrImage').src = data.dataUrl;
+				$('#qrModal').modal('show');
+				updateStatus('Aguardando QR Code', 'warning');
+			});
+
+			socket.on('wa:status', (status) => {
+				const statusText = status.status || status;
+				if (statusText === 'ready' || statusText === 'authenticated') {
+					updateStatus('Conectado ao WhatsApp', 'success');
+					$('#qrModal').modal('hide');
+					loadConversations();
+				} else if (statusText === 'qr_code') {
+					updateStatus('QR Code gerado', 'warning');
+				} else if (statusText === 'disconnected') {
+					updateStatus('Desconectado', 'danger');
+				}
+			});
+
+			socket.on('wa:message', (message) => {
+				console.log('Nova mensagem recebida:', message);
+				addMessageToChat(message);
+				updateConversationList(message);
+			});
+
+			socket.on('wa:sent', (message) => {
+				console.log('Mensagem enviada:', message);
+				addMessageToChat({...message, fromMe: true});
+			});
+
+			socket.on('disconnect', () => {
+				updateStatus('Desconectado do servidor', 'danger');
+			});
+		}
+
+		function updateStatus(text, type) {
+			const badge = document.getElementById('waStatusBadge');
+			const detail = document.getElementById('waStatusDetail');
+			
+			badge.textContent = text;
+			badge.className = `badge badge-${type}`;
+			detail.textContent = text;
+		}
+
+		// CORREÇÃO: Buscar conversas do servidor em vez de usar dados fixos
+		async function loadConversations() {
+			try {
+				const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
+				const response = await fetch(`${serverUrl}/messages/conversations`);
+				
+				if (response.ok) {
+					const data = await response.json();
+					
+					if (data.success && data.conversations) {
+						displayConversations(data.conversations);
+						allConversations = data.conversations;
+					} else {
+						// Fallback para dados de exemplo se a API falhar
+						displayConversations(getSampleConversations());
+					}
+				} else {
+					throw new Error('Erro na resposta do servidor');
+				}
+			} catch (error) {
+				console.error('Erro ao carregar conversas:', error);
+				// Fallback para dados de exemplo
+				displayConversations(getSampleConversations());
+			}
+		}
+
+		function getSampleConversations() {
+			return [
+				{ 
+					id: 1, 
+					phone_number: '5511999999999@c.us', 
+					contact_name: 'Cliente 1', 
+					last_message: 'Olá, gostaria de informações', 
+					last_message_time: new Date().toISOString(),
+					unread_count: 2 
+				},
+				{ 
+					id: 2, 
+					phone_number: '5511988888888@c.us', 
+					contact_name: 'Cliente 2', 
+					last_message: 'Obrigado pela ajuda!', 
+					last_message_time: new Date(Date.now() - 3600000).toISOString(),
+					unread_count: 0 
+				},
+				{ 
+					id: 3, 
+					phone_number: '5511977777777@c.us', 
+					contact_name: 'Cliente 3', 
+					last_message: 'Posso fazer um pedido?', 
+					last_message_time: new Date(Date.now() - 86400000).toISOString(),
+					unread_count: 1 
+				}
+			];
+		}
+
+		function displayConversations(conversations) {
+			const list = document.getElementById('conversationList');
+			list.innerHTML = '';
+
+			conversations.forEach(conv => {
+				const item = document.createElement('div');
+				item.className = 'conversation-item';
+				item.dataset.phone = conv.phone_number;
+				
+				const time = formatConversationTime(conv.last_message_time);
+				const preview = conv.last_message || '[Sem mensagens]';
+				
+				item.innerHTML = `
+					<div class="d-flex justify-content-between align-items-center">
+						<div class="conversation-name">${conv.contact_name || conv.phone_number}</div>
+						<div class="conversation-time">${time}</div>
+					</div>
+					<div class="conversation-preview">${preview}</div>
+					${conv.unread_count > 0 ? `<span class="badge badge-primary">${conv.unread_count}</span>` : ''}
+				`;
+				
+				item.addEventListener('click', () => selectConversation(conv));
+				list.appendChild(item);
+			});
+		}
+
+		function formatConversationTime(timestamp) {
+			if (!timestamp) return '';
+			
+			const date = new Date(timestamp);
+			const now = new Date();
+			const diffMs = now - date;
+			const diffMins = Math.floor(diffMs / 60000);
+			const diffHours = Math.floor(diffMs / 3600000);
+			const diffDays = Math.floor(diffMs / 86400000);
+			
+			if (diffMins < 1) return 'Agora';
+			if (diffMins < 60) return `${diffMins}m`;
+			if (diffHours < 24) return `${diffHours}h`;
+			if (diffDays < 7) return `${diffDays}d`;
+			
+			return date.toLocaleDateString('pt-BR');
+		}
+
+		// CORREÇÃO: Selecionar conversa corretamente
+		async function selectConversation(conversation) {
+			currentChat = conversation;
+			document.getElementById('currentChatName').textContent = conversation.contact_name || conversation.phone_number;
+			document.getElementById('messageInput').disabled = false;
+			document.getElementById('btnSendMessage').disabled = false;
+			
+			// Carregar mensagens da conversa
+			await loadChatMessages(conversation.phone_number);
+			
+			// Ativar item na lista
+			document.querySelectorAll('.conversation-item').forEach(item => {
+				item.classList.remove('active');
+			});
+			event.currentTarget.classList.add('active');
+		}
+
+		// CORREÇÃO: Buscar mensagens específicas da conversa
+		async function loadChatMessages(phoneNumber) {
+			const messagesArea = document.getElementById('chatMessages');
+			
+			// Mostra loading
+			messagesArea.innerHTML = `
+				<div class="text-center mt-5">
+					<i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+					<p>Carregando mensagens...</p>
+				</div>
+			`;
+
+			try {
+				const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
+				const response = await fetch(`${serverUrl}/messages/conversation/${encodeURIComponent(phoneNumber)}`);
+				
+				if (response.ok) {
+					const data = await response.json();
+					
+					if (data.success) {
+						displayMessages(data.messages);
+					} else {
+						throw new Error('Erro na resposta do servidor');
+					}
+				} else {
+					throw new Error('Erro HTTP: ' + response.status);
+				}
+			} catch (error) {
+				console.error('Erro ao carregar mensagens:', error);
+				// Fallback para buscar do localStorage ou dados de exemplo
+				const localMessages = getLocalMessages(phoneNumber);
+				displayMessages(localMessages);
+			}
+		}
+
+		function getLocalMessages(phoneNumber) {
+			// Tenta buscar do localStorage
+			const stored = localStorage.getItem(`messages_${phoneNumber}`);
+			if (stored) {
+				return JSON.parse(stored);
+			}
+			
+			// Dados de exemplo baseados no número
+			if (phoneNumber === '5511999999999@c.us') {
+				return [
+					{ id: 1, content: 'Olá, como posso ajudar?', is_from_me: true, timestamp: new Date(Date.now() - 600000).toISOString() },
+					{ id: 2, content: 'Gostaria de informações sobre um produto', is_from_me: false, timestamp: new Date(Date.now() - 300000).toISOString() }
+				];
+			} else if (phoneNumber === '5511988888888@c.us') {
+				return [
+					{ id: 1, content: 'Boa tarde!', is_from_me: true, timestamp: new Date(Date.now() - 7200000).toISOString() },
+					{ id: 2, content: 'Obrigado pela ajuda!', is_from_me: false, timestamp: new Date(Date.now() - 3600000).toISOString() }
+				];
+			}
+			
+			return [];
+		}
+
+		// CORREÇÃO PRINCIPAL: Exibir mensagens corretamente
+		function displayMessages(messages) {
+			const messagesArea = document.getElementById('chatMessages');
+			messagesArea.innerHTML = '';
+			
+			if (!messages || messages.length === 0) {
+				messagesArea.innerHTML = `
+					<div class="text-center text-muted mt-5">
+						<i class="fas fa-comments fa-3x mb-3"></i>
+						<p>Nenhuma mensagem nesta conversa</p>
+					</div>
+				`;
+				return;
+			}
+			
+			// Ordenar mensagens por timestamp
+			messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+			
+			// Adicionar cada mensagem
+			messages.forEach(msg => {
+				addMessageToDisplay(msg, false); // false = não fazer scroll para cada uma
+			});
+			
+			// Fazer scroll para a última mensagem
+			messagesArea.scrollTop = messagesArea.scrollHeight;
+			
+			console.log(`${messages.length} mensagens carregadas para a conversa`);
+		}
+
+		// CORREÇÃO: Função para adicionar mensagem ao display
+		function addMessageToDisplay(message, doScroll = true) {
+			const messagesArea = document.getElementById('chatMessages');
+			const emptyState = document.getElementById('emptyChatState');
+			
+			// Remove o estado vazio se existir
+			if (emptyState) {
+				emptyState.style.display = 'none';
+			}
+
+			const messageDiv = document.createElement('div');
+			messageDiv.className = `message ${message.fromMe || message.is_from_me ? 'outgoing' : 'incoming'}`;
+			
+			// CORREÇÃO: Tratar conteúdo da mensagem corretamente
+			let messageContent = '[Mensagem sem texto]';
+			
+			if (message.body || message.content) {
+				messageContent = message.body || message.content;
+			} else if (message.hasMedia) {
+				messageContent = '📎 Mídia';
+			} else if (message.type === 'image') {
+				messageContent = '📷 Imagem';
+			} else if (message.type === 'video') {
+				messageContent = '🎥 Vídeo';
+			} else if (message.type === 'audio') {
+				messageContent = '🎵 Áudio';
+			}
+			
+			const messageTime = formatTime(message.timestamp || new Date().toISOString());
+			
+			messageDiv.innerHTML = `
+				<div class="message-content">${escapeHtml(messageContent)}</div>
+				<div class="message-time">${messageTime}</div>
+			`;
+			
+			messagesArea.appendChild(messageDiv);
+			
+			if (doScroll) {
+				messagesArea.scrollTop = messagesArea.scrollHeight;
+			}
+		}
+
+		// CORREÇÃO: Adicionar mensagem ao chat (usada pelos eventos socket)
+		function addMessageToChat(message) {
+			// Verificar se a mensagem pertence à conversa atual
+			if (currentChat) {
+				const messageContact = message.fromMe ? message.to : message.from;
+				if (messageContact === currentChat.phone_number) {
+					addMessageToDisplay(message);
+				}
+			}
+			
+			// Atualizar a lista de conversas
+			updateConversationList(message);
+		}
+
+		function updateConversationList(message) {
+			// Encontrar ou criar a conversa na lista
+			const messageContact = message.fromMe ? message.to : message.from;
+			let conversation = allConversations.find(conv => conv.phone_number === messageContact);
+			
+			if (!conversation) {
+				// Criar nova conversa
+				conversation = {
+					id: allConversations.length + 1,
+					phone_number: messageContact,
+					contact_name: messageContact, // Em produção, buscar nome do contato
+					last_message: message.body || getMessageTypeDescription(message),
+					last_message_time: new Date().toISOString(),
+					unread_count: message.fromMe ? 0 : 1
+				};
+				allConversations.unshift(conversation);
+			} else {
+				// Atualizar conversa existente
+				conversation.last_message = message.body || getMessageTypeDescription(message);
+				conversation.last_message_time = new Date().toISOString();
+				if (!message.fromMe) {
+					conversation.unread_count = (conversation.unread_count || 0) + 1;
+				}
+				
+				// Mover para o topo
+				allConversations = allConversations.filter(conv => conv.phone_number !== messageContact);
+				allConversations.unshift(conversation);
+			}
+			
+			// Atualizar display
+			displayConversations(allConversations);
+		}
+
+		function getMessageTypeDescription(message) {
+			if (message.type === 'image') return '📷 Imagem';
+			if (message.type === 'video') return '🎥 Vídeo';
+			if (message.type === 'audio') return '🎵 Áudio';
+			if (message.type === 'document') return '📄 Documento';
+			if (message.hasMedia) return '📎 Mídia';
+			return '[Mensagem]';
+		}
+
+		// Função auxiliar para escapar HTML
+		function escapeHtml(text) {
+			if (!text) return '';
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+
+		function formatTime(timestamp) {
+			try {
+				const date = new Date(timestamp);
+				return date.toLocaleTimeString('pt-BR', { 
+					hour: '2-digit', 
+					minute: '2-digit' 
+				});
+			} catch (e) {
+				return '--:--';
+			}
+		}
+
+		// Event Listeners
+		document.getElementById('btnSendMessage').addEventListener('click', sendMessage);
+		document.getElementById('messageInput').addEventListener('keypress', function(e) {
+			if (e.key === 'Enter') {
+				sendMessage();
+			}
+		});
+
+		document.getElementById('btnAttach').addEventListener('click', function() {
+			document.getElementById('fileInput').click();
+		});
+
+		document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+		document.getElementById('btnShowQR').addEventListener('click', showQRCode);
+		document.getElementById('btnReconnect').addEventListener('click', reconnectWhatsApp);
+
+		function sendMessage() {
+			const input = document.getElementById('messageInput');
+			const message = input.value.trim();
+			
+			if (!message || !currentChat) return;
+
+			// CORREÇÃO: Usar phone_number em vez de id
+			const phoneToSend = currentChat.phone_number.replace('@c.us', '');
+
+			if (socket && socket.connected) {
+				socket.emit('widget:send', {
+					to: phoneToSend,
+					message: message
+				});
+			} else {
+				// Fallback para REST API
+				sendMessageViaREST(phoneToSend, message);
+			}
+
+			input.value = '';
+		}
+
+		function sendMessageViaREST(to, message) {
+			const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
+			
+			fetch(`${serverUrl}/send`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					to: to,
+					message: message
+				})
+			})
+			.then(response => response.json())
+			.then(data => {
+				console.log('Mensagem enviada via REST:', data);
+				// Adicionar mensagem localmente para feedback imediato
+				if (data.success) {
+					addMessageToDisplay({
+						body: message,
+						fromMe: true,
+						timestamp: new Date().toISOString()
+					});
+				}
+			})
+			.catch(error => {
+				console.error('Erro ao enviar mensagem:', error);
+			});
+		}
+
+		function handleFileSelect(event) {
+			const file = event.target.files[0];
+			if (!file) return;
+			showFilePreview(file);
+		}
+
+		function showFilePreview(file) {
+			const preview = document.getElementById('filePreview');
+			preview.style.display = 'block';
+			
+			if (file.type.startsWith('image/')) {
+				preview.innerHTML = `
+					<div class="file-preview">
+						<img src="${URL.createObjectURL(file)}" alt="Preview" style="max-height: 150px;">
+						<div class="mt-2">
+							<button class="btn btn-primary btn-sm" onclick="sendFile()">Enviar Imagem</button>
+							<button class="btn btn-secondary btn-sm" onclick="clearPreview()">Cancelar</button>
+						</div>
+					</div>
+				`;
+			} else if (file.type.startsWith('audio/')) {
+				preview.innerHTML = `
+					<div class="file-preview">
+						<audio controls src="${URL.createObjectURL(file)}" class="w-100"></audio>
+						<div class="mt-2">
+							<button class="btn btn-primary btn-sm" onclick="transcribeAudio()">Transcrever</button>
+							<button class="btn btn-success btn-sm" onclick="sendFile()">Enviar Áudio</button>
+							<button class="btn btn-secondary btn-sm" onclick="clearPreview()">Cancelar</button>
+						</div>
+					</div>
+				`;
+			} else {
+				preview.innerHTML = `
+					<div class="file-preview">
+						<i class="fas fa-file fa-3x mb-2"></i>
+						<div>${file.name}</div>
+						<div class="mt-2">
+							<button class="btn btn-primary btn-sm" onclick="sendFile()">Enviar Arquivo</button>
+							<button class="btn btn-secondary btn-sm" onclick="clearPreview()">Cancelar</button>
+						</div>
+					</div>
+				`;
+			}
+		}
+
+		function transcribeAudio() {
+			const fileInput = document.getElementById('fileInput');
+			const file = fileInput.files[0];
+			
+			if (!file) return;
+
+			// Simulação de transcrição - em produção, integrar com API de transcrição
+			const preview = document.getElementById('filePreview');
+			preview.innerHTML += `
+				<div class="audio-transcript mt-2">
+					<i class="fas fa-text-width"></i> 
+					<strong>Transcrição:</strong> 
+					<span id="transcriptText">Processando áudio... (simulação)</span>
+				</div>
+			`;
+
+			// Simular processamento
+			setTimeout(() => {
+				document.getElementById('transcriptText').textContent = 
+					"Esta é uma transcrição simulada do áudio. Em produção, integre com uma API de STT como Google Speech-to-Text.";
+			}, 2000);
+		}
+
+		function sendFile() {
+			const fileInput = document.getElementById('fileInput');
+			const file = fileInput.files[0];
+			
+			if (!file || !currentChat) return;
+
+			// Aqui você implementaria o envio do arquivo via Socket.io ou REST API
+			console.log('Enviando arquivo:', file.name, 'para:', currentChat.id);
+			
+			// Simular envio bem-sucedido
+			addMessageToDisplay({
+				body: `Arquivo enviado: ${file.name}`,
+				fromMe: true,
+				timestamp: new Date().toISOString()
+			});
+
+			clearPreview();
+		}
+
+		function clearPreview() {
+			document.getElementById('filePreview').style.display = 'none';
+			document.getElementById('filePreview').innerHTML = '';
+			document.getElementById('fileInput').value = '';
+		}
+
+		function showQRCode() {
+			// Solicitar QR Code do servidor
+			if (socket && socket.connected) {
+				socket.emit('client:reconnect');
+			}
+		}
+
+		function reconnectWhatsApp() {
+			if (socket) {
+				socket.disconnect();
+				socket.connect();
+			} else {
+				initWhatsApp();
+			}
+		}
+
+		function disconnectWhatsApp() {
+			if (socket) {
+				socket.disconnect();
+			}
+		}
+
+    </script>
+</body>
+</html>

@@ -1,3 +1,6 @@
-2025/09/19-11:06:57.052 2630 Reusing MANIFEST C:\Users\apiwhats\Desktop\DESKPHARMA_WHATS_CLONE\server\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
-2025/09/19-11:06:57.052 2630 Recovering log #22
-2025/09/19-11:06:57.054 2630 Reusing old log C:\Users\apiwhats\Desktop\DESKPHARMA_WHATS_CLONE\server\.wwebjs_auth\session\Default\Local Storage\leveldb/000022.log 
+2025/10/10-09:10:41.429 2524 Reusing MANIFEST C:\Users\apiwhats\Desktop\N_PROJECT\ola-render\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2025/10/10-09:10:41.445 2524 Recovering log #25
+2025/10/10-09:10:41.447 2524 Reusing old log C:\Users\apiwhats\Desktop\N_PROJECT\ola-render\.wwebjs_auth\session\Default\Local Storage\leveldb/000025.log 
+2025/10/10-09:12:45.187 36c Level-0 table #30: started
+2025/10/10-09:12:45.193 36c Level-0 table #30: 15647 bytes OK
+2025/10/10-09:12:45.195 36c Delete type=0 #25
