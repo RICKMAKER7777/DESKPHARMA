@@ -637,6 +637,137 @@ app.post('/messages/conversation/:empresa_id', authenticateToken, (req, res) => 
     }
 });
 
+// ==================== ENDPOINTS DE EMPRESAS ====================
+
+// 1. LISTAR TODAS AS EMPRESAS
+app.get('/empresas', authenticateToken, (req, res) => {
+    try {
+        const empresasArray = Array.from(empresas.values());
+        res.json({
+            success: true,
+            empresas: empresasArray,
+            total: empresasArray.length
+        });
+    } catch (error) {
+        console.error('[EMPRESAS] Erro ao listar empresas:', error);
+        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
+    }
+});
+
+// 2. CADASTRAR NOVA EMPRESA
+app.post('/empresas', authenticateToken, (req, res) => {
+    try {
+        const { cnpj, nome, telefone, email } = req.body;
+
+        if (!cnpj || !nome) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'CNPJ e nome são obrigatórios' 
+            });
+        }
+
+        // Verificar se CNPJ já existe
+        const empresaExistente = Array.from(empresas.values()).find(
+            emp => emp.cnpj === cnpj
+        );
+
+        if (empresaExistente) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'CNPJ já cadastrado' 
+            });
+        }
+
+        // Criar nova empresa
+        const novaEmpresaId = Math.max(...Array.from(empresas.keys())) + 1;
+        
+        const novaEmpresa = {
+            id: novaEmpresaId,
+            cnpj: cnpj,
+            nome: nome,
+            telefone: telefone || '',
+            email: email || '',
+            whatsapp_status: 'disconnected',
+            whatsapp_qr_code: null,
+            whatsapp_error: null,
+            created_at: new Date().toISOString()
+        };
+
+        empresas.set(novaEmpresaId, novaEmpresa);
+
+        res.json({
+            success: true,
+            message: 'Empresa cadastrada com sucesso',
+            empresa: novaEmpresa
+        });
+
+    } catch (error) {
+        console.error('[EMPRESAS] Erro ao cadastrar empresa:', error);
+        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
+    }
+});
+
+// 3. BUSCAR EMPRESA POR ID
+app.get('/empresas/:id', authenticateToken, (req, res) => {
+    try {
+        const { id } = req.params;
+        const empresaId = parseInt(id);
+        
+        const empresa = empresas.get(empresaId);
+        
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        res.json({
+            success: true,
+            empresa: empresa
+        });
+
+    } catch (error) {
+        console.error('[EMPRESAS] Erro ao buscar empresa:', error);
+        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
+    }
+});
+
+// 4. ATUALIZAR EMPRESA
+app.put('/empresas/:id', authenticateToken, (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, telefone, email } = req.body;
+        const empresaId = parseInt(id);
+        
+        const empresa = empresas.get(empresaId);
+        
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        // Atualizar dados
+        if (nome) empresa.nome = nome;
+        if (telefone) empresa.telefone = telefone;
+        if (email) empresa.email = email;
+
+        empresas.set(empresaId, empresa);
+
+        res.json({
+            success: true,
+            message: 'Empresa atualizada com sucesso',
+            empresa: empresa
+        });
+
+    } catch (error) {
+        console.error('[EMPRESAS] Erro ao atualizar empresa:', error);
+        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
+    }
+});
+
 // Rota raiz
 app.get('/', (req, res) => {
     res.json({
