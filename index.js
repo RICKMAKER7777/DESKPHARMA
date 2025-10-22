@@ -161,13 +161,38 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }),
         puppeteer: {
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        }
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--max-old-space-size=512'
+            ]
+        },
+        // ⚠️ ADICIONE ESTA CONFIGURAÇÃO PARA EVITAR TRAVAMENTO
+        takeoverOnConflict: false,
+        takeoverTimeoutMs: 0,
+        restartOnAuthFail: true
     });
 
-    // Eventos do WhatsApp
+    // ✅ ADICIONE TIMEOUT PARA QR CODE
+    let qrTimeout;
+    
     client.on('qr', async (qr) => {
         try {
+            // Cancelar timeout anterior
+            if (qrTimeout) clearTimeout(qrTimeout);
+            
+            // Novo timeout de 60 segundos
+            qrTimeout = setTimeout(async () => {
+                console.log(`[WA-${empresaId}] ⏰ QR Code expirado, gerando novo...`);
+                await client.destroy();
+                whatsappInstances.delete(empresaId);
+                
+                const newClient = createWhatsAppInstance(empresaId, cnpj);
+                whatsappInstances.set(empresaId, newClient);
+                await newClient.initialize();
+            }, 60000); // 60 segundos
+
             const dataUrl = await QRCode.toDataURL(qr, {
                 width: 300,
                 height: 300,
@@ -181,16 +206,21 @@ function createWhatsAppInstance(empresaId, cnpj) {
                 empresa.whatsapp_error = null;
             }
             
-            console.log(`[WA-${empresaId}] QR Code gerado`);
+            console.log(`[WA-${empresaId}] QR Code gerado (válido por 60s)`);
+            
         } catch (error) {
             console.error(`[WA-${empresaId}] Erro ao gerar QR:`, error);
         }
     });
 
     client.on('ready', () => {
+        // Cancelar timeout do QR
+        if (qrTimeout) clearTimeout(qrTimeout);
+        
         const empresa = empresas.get(empresaId);
         if (empresa) {
             empresa.whatsapp_status = 'ready';
+            empresa.whatsapp_qr_code = null; // Limpar QR quando conectar
             empresa.whatsapp_error = null;
         }
         console.log(`[WA-${empresaId}] ✅ Conectado e pronto`);
