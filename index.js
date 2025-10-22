@@ -1,4 +1,4 @@
-// index.js - API WhatsApp com Correções de Conexão
+// index.js - API WhatsApp com Solução Definitiva QR Code
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -349,6 +349,8 @@ async function saveMessageToDatabase(messageData) {
 
 // ==================== WHATSAPP INSTANCE CORRIGIDA ====================
 function createWhatsAppInstance(empresaId, cnpj) {
+    console.log(`[WA-${empresaId}] 🚀 Criando nova instância WhatsApp`);
+    
     const client = new Client({
         authStrategy: new LocalAuth({ 
             clientId: `empresa_${empresaId}`,
@@ -363,116 +365,183 @@ function createWhatsAppInstance(empresaId, cnpj) {
                 '--single-process'
             ]
         },
+        // 🔥 CONFIGURAÇÕES CRÍTICAS
         takeoverOnConflict: false,
-        takeoverTimeoutMs: 0,
+        takeoverTimeoutMs: 30000,
         restartOnAuthFail: true,
-        qrMaxRetries: 3,
-        authTimeout: 60000
+        qrMaxRetries: 2,
+        authTimeout: 45000
     });
 
     let qrTimeout;
-    let qrRetryCount = 0;
-    const MAX_QR_RETRIES = 3;
+    let isAuthenticated = false;
     
+    console.log(`[WA-${empresaId}] 📱 Instância criada, verificando sessão existente...`);
+
+    // 🔥 EVENTO QR CODE - CORRIGIDO
     client.on('qr', async (qr) => {
         try {
-            if (qrTimeout) clearTimeout(qrTimeout);
+            console.log(`[WA-${empresaId}] 🔄 QR Code solicitado`);
             
-            qrRetryCount++;
-            console.log(`[WA-${empresaId}] QR Code ${qrRetryCount}/${MAX_QR_RETRIES} gerado`);
-
-            if (qrRetryCount > MAX_QR_RETRIES) {
-                console.log(`[WA-${empresaId}] ❌ Limite de QR Codes atingido`);
-                await client.destroy();
-                whatsappInstances.delete(empresaId);
-                await updateWhatsAppStatus(empresaId, 'qr_limit_reached', null, 'Limite de QR Codes atingido');
-                return;
+            // Limpar timeout anterior
+            if (qrTimeout) {
+                clearTimeout(qrTimeout);
+                qrTimeout = null;
             }
 
-            qrTimeout = setTimeout(async () => {
-                console.log(`[WA-${empresaId}] ⏰ QR Code ${qrRetryCount} expirado`);
-                
-                if (qrRetryCount < MAX_QR_RETRIES) {
-                    try {
-                        await client.logout();
-                        await client.initialize();
-                    } catch (error) {
-                        console.error(`[WA-${empresaId}] Erro ao regenerar QR:`, error);
-                    }
-                }
-            }, 90000);
-
+            // Gerar QR Code
             const dataUrl = await QRCode.toDataURL(qr, {
                 width: 300,
                 height: 300,
                 margin: 1
             });
             
+            console.log(`[WA-${empresaId}] 📱 QR Code gerado - Aguardando escaneamento...`);
+            
+            // Salvar no banco
             await updateWhatsAppStatus(empresaId, 'qr_code', dataUrl, null);
             
-        } catch (error) {
-            console.error(`[WA-${empresaId}] Erro ao gerar QR:`, error);
-        }
-    });
-
-    client.on('ready', async () => {
-        if (qrTimeout) clearTimeout(qrTimeout);
-        qrRetryCount = 0;
-        
-        await updateWhatsAppStatus(empresaId, 'ready', null, null);
-        console.log(`[WA-${empresaId}] ✅ CONECTADO E PRONTO`);
-        
-        try {
-            const isLoggedIn = await client.getState();
-            console.log(`[WA-${empresaId}] 📱 Estado da conexão:`, isLoggedIn);
-        } catch (error) {
-            console.error(`[WA-${empresaId}] Erro ao verificar estado:`, error);
-        }
-    });
-
-    client.on('authenticated', async () => {
-        console.log(`[WA-${empresaId}] 🔑 AUTENTICADO - Sessão salva`);
-        if (qrTimeout) clearTimeout(qrTimeout);
-        qrRetryCount = 0;
-    });
-
-    client.on('auth_failure', async (msg) => {
-        console.log(`[WA-${empresaId}] ❌ FALHA NA AUTENTICAÇÃO:`, msg);
-        if (qrTimeout) clearTimeout(qrTimeout);
-        await updateWhatsAppStatus(empresaId, 'auth_failure', null, msg);
-    });
-
-    client.on('disconnected', async (reason) => {
-        console.log(`[WA-${empresaId}] 🔌 DESCONECTADO:`, reason);
-        if (qrTimeout) clearTimeout(qrTimeout);
-        await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
-        
-        if (reason === 'NAVIGATION') {
-            console.log(`[WA-${empresaId}] 🔄 Tentando reconectar...`);
-            setTimeout(async () => {
+            // 🔥 TIMEOUT REDUZIDO - 45 segundos
+            qrTimeout = setTimeout(async () => {
+                console.log(`[WA-${empresaId}] ⏰ QR Code expirado (45s)`);
+                
+                // Verificar se já está autenticado
                 try {
-                    await client.initialize();
+                    const state = await client.getState();
+                    console.log(`[WA-${empresaId}] 🔍 Estado atual: ${state}`);
+                    
+                    if (state === 'CONNECTED') {
+                        console.log(`[WA-${empresaId}] ✅ Já está conectado, ignorando timeout`);
+                        return;
+                    }
                 } catch (error) {
-                    console.error(`[WA-${empresaId}] Erro na reconexão:`, error);
+                    console.log(`[WA-${empresaId}] ❌ Erro ao verificar estado: ${error.message}`);
                 }
-            }, 5000);
+                
+                // Forçar novo QR Code apenas se não estiver conectado
+                console.log(`[WA-${empresaId}] 🔄 Solicitando novo QR Code...`);
+                try {
+                    // Destruir e recriar instância
+                    await client.destroy();
+                    whatsappInstances.delete(empresaId);
+                    
+                    const newClient = createWhatsAppInstance(empresaId, cnpj);
+                    whatsappInstances.set(empresaId, newClient);
+                    await newClient.initialize();
+                } catch (error) {
+                    console.error(`[WA-${empresaId}] ❌ Erro ao regenerar QR:`, error);
+                }
+            }, 45000); // 45 segundos
+
+        } catch (error) {
+            console.error(`[WA-${empresaId}] ❌ Erro ao gerar QR:`, error);
         }
     });
 
+    // 🔥 EVENTO READY - CORRIGIDO
+    client.on('ready', async () => {
+        console.log(`[WA-${empresaId}] 🎉 READY - WhatsApp conectado e pronto!`);
+        
+        // Limpar timeout do QR
+        if (qrTimeout) {
+            clearTimeout(qrTimeout);
+            qrTimeout = null;
+        }
+        
+        isAuthenticated = true;
+        
+        // Atualizar status no banco
+        await updateWhatsAppStatus(empresaId, 'ready', null, null);
+        
+        // 🔥 VERIFICAÇÃO EXTRA DE CONEXÃO
+        try {
+            const state = await client.getState();
+            console.log(`[WA-${empresaId}] 📊 Estado confirmado: ${state}`);
+            
+            if (state === 'CONNECTED') {
+                console.log(`[WA-${empresaId}] ✅ CONEXÃO ESTABELECIDA COM SUCESSO`);
+            }
+        } catch (error) {
+            console.error(`[WA-${empresaId}] ❌ Erro ao verificar estado:`, error);
+        }
+    });
+
+    // 🔥 EVENTO AUTHENTICATED - CRÍTICO
+    client.on('authenticated', async () => {
+        console.log(`[WA-${empresaId}] 🔑 AUTHENTICATED - Sessão autenticada com sucesso!`);
+        
+        // Limpar timeout do QR
+        if (qrTimeout) {
+            clearTimeout(qrTimeout);
+            qrTimeout = null;
+        }
+        
+        isAuthenticated = true;
+        
+        // Já atualizar status para evitar problemas
+        await updateWhatsAppStatus(empresaId, 'authenticated', null, null);
+    });
+
+    // 🔥 EVENTO CHANGE_STATE - IMPORTANTE
     client.on('change_state', async (state) => {
-        console.log(`[WA-${empresaId}] 🔄 Mudança de estado:`, state);
+        console.log(`[WA-${empresaId}] 🔄 MUDANÇA DE ESTADO: ${state}`);
         
         if (state === 'CONNECTED') {
-            console.log(`[WA-${empresaId}] 🌐 CONEXÃO ESTABELECIDA COM SUCESSO`);
+            console.log(`[WA-${empresaId}] 🌐 CONECTADO AO WHATSAPP WEB`);
             await updateWhatsAppStatus(empresaId, 'ready', null, null);
         }
     });
 
+    // 🔥 EVENTO AUTH FAILURE
+    client.on('auth_failure', async (msg) => {
+        console.log(`[WA-${empresaId}] ❌ FALHA NA AUTENTICAÇÃO:`, msg);
+        
+        if (qrTimeout) {
+            clearTimeout(qrTimeout);
+            qrTimeout = null;
+        }
+        
+        await updateWhatsAppStatus(empresaId, 'auth_failure', null, msg);
+    });
+
+    // 🔥 EVENTO DISCONNECTED
+    client.on('disconnected', async (reason) => {
+        console.log(`[WA-${empresaId}] 🔌 DESCONECTADO:`, reason);
+        
+        if (qrTimeout) {
+            clearTimeout(qrTimeout);
+            qrTimeout = null;
+        }
+        
+        isAuthenticated = false;
+        await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
+        
+        // Tentar reconectar automaticamente para alguns erros
+        if (reason === 'NAVIGATION' || reason === 'CONFLICT') {
+            console.log(`[WA-${empresaId}] 🔄 Tentando reconexão automática em 10s...`);
+            setTimeout(async () => {
+                try {
+                    await client.initialize();
+                } catch (error) {
+                    console.error(`[WA-${empresaId}] ❌ Erro na reconexão:`, error);
+                }
+            }, 10000);
+        }
+    });
+
+    // 🔥 EVENTO MESSAGE
     client.on('message', async (msg) => {
         try {
             const messageContent = msg.body || getDefaultMessageContent(msg.type);
             
             console.log(`[WA-${empresaId}] 📩 MENSAGEM RECEBIDA de ${msg.from}: ${messageContent.substring(0, 50)}`);
+            
+            // 🔥 CONFIRMAÇÃO DE QUE ESTÁ FUNCIONANDO
+            if (!isAuthenticated) {
+                console.log(`[WA-${empresaId}] 💡 RECEBENDO MENSAGENS - SESSÃO ATIVA!`);
+                isAuthenticated = true;
+                await updateWhatsAppStatus(empresaId, 'ready', null, null);
+            }
             
             await saveMessageToDatabase({
                 empresa_id: empresaId,
@@ -483,8 +552,13 @@ function createWhatsAppInstance(empresaId, cnpj) {
             });
 
         } catch (error) {
-            console.error(`[WA-${empresaId}] Erro ao processar mensagem:`, error);
+            console.error(`[WA-${empresaId}] ❌ Erro ao processar mensagem:`, error);
         }
+    });
+
+    // 🔥 EVENTO LOADING SCREEN
+    client.on('loading_screen', (percent, message) => {
+        console.log(`[WA-${empresaId}] 📊 Carregando: ${percent}% - ${message}`);
     });
 
     return client;
@@ -495,21 +569,38 @@ async function initializeWhatsAppForEmpresa(empresaId) {
     try {
         const empresa = await getEmpresaById(empresaId);
         if (!empresa) {
-            console.error(`[WA-${empresaId}] Empresa não encontrada`);
+            console.error(`[WA-${empresaId}] ❌ Empresa não encontrada`);
             return false;
         }
 
+        // Verificar se já existe instância
         if (whatsappInstances.has(empresaId)) {
-            console.log(`[WA-${empresaId}] ✅ Já inicializado`);
-            return true;
+            const existingClient = whatsappInstances.get(empresaId);
+            
+            // Verificar se a instância existente ainda está funcionando
+            try {
+                const state = await existingClient.getState();
+                console.log(`[WA-${empresaId}] ✅ Instância já existe - Estado: ${state}`);
+                
+                if (state === 'CONNECTED') {
+                    console.log(`[WA-${empresaId}] 🎯 Já conectado, retornando...`);
+                    return true;
+                }
+            } catch (error) {
+                console.log(`[WA-${empresaId}] 🔄 Instância existente com problema, recriando...`);
+                await existingClient.destroy();
+                whatsappInstances.delete(empresaId);
+            }
         }
 
+        console.log(`[WA-${empresaId}] 🚀 Inicializando nova instância WhatsApp...`);
+        
         const client = createWhatsAppInstance(empresaId, empresa.cnpj);
         whatsappInstances.set(empresaId, client);
 
         await client.initialize();
         
-        console.log(`[WA-${empresaId}] 🔄 Inicialização solicitada`);
+        console.log(`[WA-${empresaId}] 📱 Inicialização concluída`);
         return true;
 
     } catch (error) {
@@ -683,12 +774,20 @@ app.post('/whatsapp/restart/:empresa_id', authenticateToken, async (req, res) =>
             });
         }
 
+        console.log(`[WA-${empresaId}] 🔄 Reiniciando WhatsApp...`);
+
+        // Destruir instância atual
         const client = whatsappInstances.get(empresaId);
         if (client) {
             await client.destroy();
             whatsappInstances.delete(empresaId);
+            console.log(`[WA-${empresaId}] ✅ Instância anterior destruída`);
         }
 
+        // Aguardar um pouco
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Criar nova instância
         const success = await initializeWhatsAppForEmpresa(empresaId);
 
         if (success) {
@@ -873,7 +972,7 @@ app.get('/', (req, res) => {
     res.json({
         success: true,
         message: '🚀 API WhatsApp para Bubble - Online',
-        version: '3.0',
+        version: '4.0',
         database: 'SQLite Persistente',
         endpoints: {
             public: [
@@ -914,6 +1013,7 @@ async function startServer() {
             console.log(`🌐 URL: http://localhost:${PORT}`);
             console.log(`🔐 Token fixo: ${FIXED_TOKENS[0]}`);
             console.log(`💾 Banco: SQLite persistente`);
+            console.log(`📱 Versão: 4.0 - Solução Definitiva QR Code`);
         });
     } catch (error) {
         console.error('❌ Erro ao iniciar servidor:', error);
