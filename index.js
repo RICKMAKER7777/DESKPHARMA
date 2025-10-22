@@ -637,6 +637,152 @@ app.post('/messages/conversation/:empresa_id', authenticateToken, (req, res) => 
     }
 });
 
+// ==================== ENDPOINTS PARA CONTROLE DO WHATSAPP ====================
+
+// 1. REINICIAR CONEXÃO DO WHATSAPP
+app.post('/whatsapp/restart/:empresa_id', authenticateToken, async (req, res) => {
+    try {
+        const { empresa_id } = req.params;
+        const empresaId = parseInt(empresa_id);
+        
+        const empresa = empresas.get(empresaId);
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        // Verificar se existe instância
+        const client = whatsappInstances.get(empresaId);
+        
+        if (client) {
+            console.log(`[WA-${empresaId}] 🔄 Reiniciando conexão...`);
+            
+            // Destruir instância atual
+            await client.destroy();
+            whatsappInstances.delete(empresaId);
+            
+            // Limpar QR Code e status
+            empresa.whatsapp_status = 'disconnected';
+            empresa.whatsapp_qr_code = null;
+            empresa.whatsapp_error = null;
+        }
+
+        // Criar nova instância
+        const newClient = createWhatsAppInstance(empresaId, empresa.cnpj);
+        whatsappInstances.set(empresaId, newClient);
+
+        // Inicializar
+        await newClient.initialize();
+
+        res.json({ 
+            success: true, 
+            message: 'WhatsApp reiniciado com sucesso',
+            empresa_id: empresaId,
+            status: 'restarting'
+        });
+
+    } catch (error) {
+        console.error('[WHATSAPP] Erro ao reiniciar:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro ao reiniciar WhatsApp: ' + error.message 
+        });
+    }
+});
+
+// 2. DESCONECTAR WHATSAPP
+app.post('/whatsapp/disconnect/:empresa_id', authenticateToken, async (req, res) => {
+    try {
+        const { empresa_id } = req.params;
+        const empresaId = parseInt(empresa_id);
+        
+        const empresa = empresas.get(empresaId);
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        const client = whatsappInstances.get(empresaId);
+        
+        if (client) {
+            await client.destroy();
+            whatsappInstances.delete(empresaId);
+        }
+
+        // Resetar status
+        empresa.whatsapp_status = 'disconnected';
+        empresa.whatsapp_qr_code = null;
+        empresa.whatsapp_error = null;
+
+        res.json({ 
+            success: true, 
+            message: 'WhatsApp desconectado com sucesso',
+            empresa_id: empresaId
+        });
+
+    } catch (error) {
+        console.error('[WHATSAPP] Erro ao desconectar:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro ao desconectar WhatsApp' 
+        });
+    }
+});
+
+// 3. FORÇAR NOVO QR CODE
+app.post('/whatsapp/refresh-qr/:empresa_id', authenticateToken, async (req, res) => {
+    try {
+        const { empresa_id } = req.params;
+        const empresaId = parseInt(empresa_id);
+        
+        const empresa = empresas.get(empresaId);
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        const client = whatsappInstances.get(empresaId);
+        
+        if (!client) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'WhatsApp não está inicializado' 
+            });
+        }
+
+        // Forçar novo QR Code resetando a sessão
+        if (client) {
+            await client.destroy();
+            whatsappInstances.delete(empresaId);
+            
+            // Nova instância
+            const newClient = createWhatsAppInstance(empresaId, empresa.cnpj);
+            whatsappInstances.set(empresaId, newClient);
+            await newClient.initialize();
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'Solicitando novo QR Code...',
+            empresa_id: empresaId,
+            status: 'requesting_qr'
+        });
+
+    } catch (error) {
+        console.error('[WHATSAPP] Erro ao refresh QR:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro ao gerar novo QR Code' 
+        });
+    }
+});
+
 // ==================== ENDPOINTS DE EMPRESAS ====================
 
 // 1. LISTAR TODAS AS EMPRESAS
