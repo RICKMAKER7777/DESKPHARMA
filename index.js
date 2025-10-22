@@ -1,4 +1,4 @@
-// index.js - API Only para Bubble
+// index.js - API WhatsApp com Banco de Dados Persistente
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -6,6 +6,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import QRCode from 'qrcode';
 import pkg from 'whatsapp-web.js';
+import sqlite3 from 'sqlite3';
 import jwt from 'jsonwebtoken';
 
 const { Client, LocalAuth } = pkg;
@@ -30,6 +31,216 @@ const io = new SocketIOServer(server, {
     },
 });
 
+// ==================== CONFIGURAÇÃO DO BANCO DE DADOS ====================
+let db;
+
+// Funções do banco de dados
+function dbRun(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+            if (err) reject(err);
+            else resolve({ lastID: this.lastID, changes: this.changes });
+        });
+    });
+}
+
+function dbGet(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+}
+
+function dbAll(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
+function dbExec(sql) {
+    return new Promise((resolve, reject) => {
+        db.exec(sql, (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+}
+
+async function initializeDatabase() {
+    return new Promise((resolve, reject) => {
+        db = new sqlite3.Database('./whatsapp_db.sqlite', (err) => {
+            if (err) {
+                console.error('[DATABASE] Erro ao conectar com o banco:', err);
+                reject(err);
+            } else {
+                console.log('[DATABASE] Conectado ao SQLite');
+                createTables().then(resolve).catch(reject);
+            }
+        });
+    });
+}
+
+async function createTables() {
+    try {
+        // Tabela de empresas
+        await dbExec(`
+            CREATE TABLE IF NOT EXISTS empresas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cnpj TEXT UNIQUE NOT NULL,
+                nome TEXT NOT NULL,
+                telefone TEXT,
+                email TEXT,
+                whatsapp_status TEXT DEFAULT 'disconnected',
+                whatsapp_qr_code TEXT,
+                whatsapp_error TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Tabela de sessões WhatsApp
+        await dbExec(`
+            CREATE TABLE IF NOT EXISTS whatsapp_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa_id INTEGER UNIQUE NOT NULL,
+                session_data TEXT,
+                status TEXT DEFAULT 'disconnected',
+                last_activity DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (empresa_id) REFERENCES empresas (id)
+            )
+        `);
+
+        // Tabela de conversas
+        await dbExec(`
+            CREATE TABLE IF NOT EXISTS conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa_id INTEGER NOT NULL,
+                phone_number TEXT NOT NULL,
+                contact_name TEXT,
+                last_message TEXT,
+                last_message_time DATETIME,
+                unread_count INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (empresa_id) REFERENCES empresas (id)
+            )
+        `);
+
+        // Tabela de mensagens
+        await dbExec(`
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa_id INTEGER NOT NULL,
+                conversation_id INTEGER,
+                phone_number TEXT NOT NULL,
+                message_type TEXT NOT NULL,
+                content TEXT,
+                media_url TEXT,
+                media_type TEXT,
+                is_from_me BOOLEAN DEFAULT 0,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'sent',
+                FOREIGN KEY (empresa_id) REFERENCES empresas (id),
+                FOREIGN KEY (conversation_id) REFERENCES conversations (id)
+            )
+        `);
+
+        // Inserir empresas exemplo se não existirem
+        const empresaCount = await dbGet('SELECT COUNT(*) as count FROM empresas');
+        
+        if (empresaCount.count === 0) {
+            await dbRun(`
+                INSERT INTO empresas (cnpj, nome, telefone, email) 
+                VALUES (?, ?, ?, ?)
+            `, ['12345678000195', 'Deskpharma ltda', '+5519984322298', 'deskpharma@gmail.com']);
+
+            await dbRun(`
+                INSERT INTO empresas (cnpj, nome, telefone, email) 
+                VALUES (?, ?, ?, ?)
+            `, ['98765432000187', 'BarbosasSA', '+5519984322298', 'barbosasSAsuporte@gmail.com']);
+
+            console.log('[DATABASE] Empresas exemplo inseridas');
+        }
+
+        console.log('[DATABASE] ✅ Todas as tabelas criadas/verificadas');
+
+    } catch (error) {
+        console.error('[DATABASE] Erro ao criar tabelas:', error);
+        throw error;
+    }
+}
+
+// ==================== FUNÇÕES DE BANCO ====================
+
+// Buscar todas as empresas
+async function getAllEmpresas() {
+    try {
+        const empresas = await dbAll('SELECT * FROM empresas ORDER BY id');
+        const empresasMap = new Map();
+        
+        empresas.forEach(emp => {
+            empresasMap.set(emp.id, emp);
+        });
+        
+        return empresasMap;
+    } catch (error) {
+        console.error('[DATABASE] Erro ao buscar empresas:', error);
+        return new Map();
+    }
+}
+
+// Buscar empresa por ID
+async function getEmpresaById(id) {
+    try {
+        return await dbGet('SELECT * FROM empresas WHERE id = ?', [id]);
+    } catch (error) {
+        console.error('[DATABASE] Erro ao buscar empresa:', error);
+        return null;
+    }
+}
+
+// Atualizar status do WhatsApp
+async function updateWhatsAppStatus(empresaId, status, qrCode = null, error = null) {
+    try {
+        await dbRun(
+            'UPDATE empresas SET whatsapp_status = ?, whatsapp_qr_code = ?, whatsapp_error = ? WHERE id = ?',
+            [status, qrCode, error, empresaId]
+        );
+        return true;
+    } catch (error) {
+        console.error('[DATABASE] Erro ao atualizar status:', error);
+        return false;
+    }
+}
+
+// Cadastrar nova empresa
+async function createEmpresa(cnpj, nome, telefone, email) {
+    try {
+        // Verificar se CNPJ já existe
+        const existing = await dbGet('SELECT id FROM empresas WHERE cnpj = ?', [cnpj]);
+        if (existing) {
+            throw new Error('CNPJ já cadastrado');
+        }
+
+        const result = await dbRun(
+            'INSERT INTO empresas (cnpj, nome, telefone, email) VALUES (?, ?, ?, ?)',
+            [cnpj, nome, telefone, email]
+        );
+        
+        // Buscar empresa criada
+        const novaEmpresa = await dbGet('SELECT * FROM empresas WHERE id = ?', [result.lastID]);
+        return novaEmpresa;
+        
+    } catch (error) {
+        console.error('[DATABASE] Erro ao criar empresa:', error);
+        throw error;
+    }
+}
+
 // ==================== TOKEN FIXO PARA BUBBLE ====================
 const FIXED_TOKENS = [
     'bubble_integration_token_2024',
@@ -47,7 +258,7 @@ const authenticateToken = (req, res, next) => {
             id: 1, 
             email: 'bubble@integration.com', 
             role: 'admin',
-            empresa_id: 1 // Empresa padrão
+            empresa_id: 1
         };
         return next();
     }
@@ -70,65 +281,8 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==================== STORAGE EM MEMÓRIA ====================
-const empresas = new Map();
 const whatsappInstances = new Map();
-const conversations = new Map();
-const messages = new Map();
-
-// Dados de exemplo
-function initializeSampleData() {
-    // Empresas de exemplo
-    empresas.set(1, {
-        id: 1,
-        cnpj: '12345678000195',
-        nome: 'Farmácia Central',
-        whatsapp_status: 'disconnected',
-        whatsapp_qr_code: null,
-        whatsapp_error: null
-    });
-    
-    empresas.set(2, {
-        id: 2, 
-        cnpj: '98765432000187',
-        nome: 'Drogaria Popular',
-        whatsapp_status: 'disconnected',
-        whatsapp_qr_code: null,
-        whatsapp_error: null
-    });
-
-    // Conversas de exemplo
-    conversations.set('1_5519997124467@c.us', {
-        id: '1_5519997124467@c.us',
-        empresa_id: 1,
-        phone_number: '5519997124467@c.us',
-        contact_name: 'João Silva',
-        last_message: 'Olá, gostaria de informações',
-        last_message_time: new Date().toISOString(),
-        unread_count: 2
-    });
-
-    // Mensagens de exemplo
-    messages.set('1_5519997124467@c.us', [
-        {
-            id: 1,
-            empresa_id: 1,
-            phone_number: '5519997124467@c.us',
-            message_type: 'text',
-            content: 'Olá, gostaria de informações sobre os produtos',
-            is_from_me: false,
-            timestamp: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-            id: 2,
-            empresa_id: 1,
-            phone_number: '5519997124467@c.us',
-            message_type: 'text',
-            content: 'Claro! Em que posso ajudar?',
-            is_from_me: true,
-            timestamp: new Date(Date.now() - 1800000).toISOString()
-        }
-    ]);
-}
+let empresas;
 
 // ==================== FUNÇÕES AUXILIARES ====================
 function normalizeNumber(number) {
@@ -161,20 +315,13 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }),
         puppeteer: {
             headless: true,
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--max-old-space-size=512'
-            ]
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
         },
-        // ⚠️ ADICIONE ESTA CONFIGURAÇÃO PARA EVITAR TRAVAMENTO
         takeoverOnConflict: false,
-        takeoverTimeoutMs: 0,
-        restartOnAuthFail: true
+        takeoverTimeoutMs: 0
     });
 
-    // ✅ ADICIONE TIMEOUT PARA QR CODE
+    // ✅ TIMEOUT PARA QR CODE
     let qrTimeout;
     
     client.on('qr', async (qr) => {
@@ -185,13 +332,17 @@ function createWhatsAppInstance(empresaId, cnpj) {
             // Novo timeout de 60 segundos
             qrTimeout = setTimeout(async () => {
                 console.log(`[WA-${empresaId}] ⏰ QR Code expirado, gerando novo...`);
-                await client.destroy();
-                whatsappInstances.delete(empresaId);
-                
-                const newClient = createWhatsAppInstance(empresaId, cnpj);
-                whatsappInstances.set(empresaId, newClient);
-                await newClient.initialize();
-            }, 60000); // 60 segundos
+                try {
+                    await client.destroy();
+                    whatsappInstances.delete(empresaId);
+                    
+                    const newClient = createWhatsAppInstance(empresaId, cnpj);
+                    whatsappInstances.set(empresaId, newClient);
+                    await newClient.initialize();
+                } catch (error) {
+                    console.error(`[WA-${empresaId}] Erro ao regenerar QR:`, error);
+                }
+            }, 60000);
 
             const dataUrl = await QRCode.toDataURL(qr, {
                 width: 300,
@@ -199,12 +350,8 @@ function createWhatsAppInstance(empresaId, cnpj) {
                 margin: 1
             });
             
-            const empresa = empresas.get(empresaId);
-            if (empresa) {
-                empresa.whatsapp_qr_code = dataUrl;
-                empresa.whatsapp_status = 'qr_code';
-                empresa.whatsapp_error = null;
-            }
+            // Salvar no banco
+            await updateWhatsAppStatus(empresaId, 'qr_code', dataUrl, null);
             
             console.log(`[WA-${empresaId}] QR Code gerado (válido por 60s)`);
             
@@ -213,58 +360,40 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
     });
 
-    client.on('ready', () => {
+    client.on('ready', async () => {
         // Cancelar timeout do QR
         if (qrTimeout) clearTimeout(qrTimeout);
         
-        const empresa = empresas.get(empresaId);
-        if (empresa) {
-            empresa.whatsapp_status = 'ready';
-            empresa.whatsapp_qr_code = null; // Limpar QR quando conectar
-            empresa.whatsapp_error = null;
-        }
+        // Atualizar no banco
+        await updateWhatsAppStatus(empresaId, 'ready', null, null);
         console.log(`[WA-${empresaId}] ✅ Conectado e pronto`);
     });
 
-    client.on('auth_failure', (msg) => {
-        const empresa = empresas.get(empresaId);
-        if (empresa) {
-            empresa.whatsapp_status = 'auth_failure';
-            empresa.whatsapp_error = msg;
-        }
+    client.on('auth_failure', async (msg) => {
+        if (qrTimeout) clearTimeout(qrTimeout);
+        await updateWhatsAppStatus(empresaId, 'auth_failure', null, msg);
         console.log(`[WA-${empresaId}] ❌ Falha na autenticação:`, msg);
     });
 
-    client.on('disconnected', (reason) => {
-        const empresa = empresas.get(empresaId);
-        if (empresa) {
-            empresa.whatsapp_status = 'disconnected';
-            empresa.whatsapp_error = reason;
-        }
+    client.on('disconnected', async (reason) => {
+        if (qrTimeout) clearTimeout(qrTimeout);
+        await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
         console.log(`[WA-${empresaId}] 🔌 Desconectado:`, reason);
     });
 
     client.on('message', async (msg) => {
         try {
             const messageContent = msg.body || getDefaultMessageContent(msg.type);
-            const phoneKey = `${empresaId}_${msg.fromMe ? msg.to : msg.from}`;
             
-            if (!messages.has(phoneKey)) {
-                messages.set(phoneKey, []);
-            }
-            
-            const newMessage = {
-                id: Date.now(),
+            // Salvar mensagem no banco
+            await saveMessageToDatabase({
                 empresa_id: empresaId,
                 phone_number: msg.fromMe ? msg.to : msg.from,
                 message_type: msg.type,
                 content: messageContent,
-                is_from_me: msg.fromMe,
-                timestamp: new Date().toISOString()
-            };
-            
-            messages.get(phoneKey).push(newMessage);
-            
+                is_from_me: msg.fromMe
+            });
+
             console.log(`[WA-${empresaId}] 📩 Mensagem de ${msg.from}: ${messageContent.substring(0, 50)}`);
             
         } catch (error) {
@@ -273,6 +402,79 @@ function createWhatsAppInstance(empresaId, cnpj) {
     });
 
     return client;
+}
+
+// Salvar mensagem no banco
+async function saveMessageToDatabase(messageData) {
+    try {
+        const { empresa_id, phone_number, message_type, content, is_from_me } = messageData;
+        
+        // Buscar ou criar conversa
+        let existingConv = await dbGet(
+            'SELECT id FROM conversations WHERE empresa_id = ? AND phone_number = ?', 
+            [empresa_id, phone_number]
+        );
+        
+        let convId;
+        if (existingConv) {
+            convId = existingConv.id;
+        } else {
+            const contactName = `Cliente ${phone_number.replace('@c.us', '').slice(-4)}`;
+            const result = await dbRun(
+                'INSERT INTO conversations (empresa_id, phone_number, contact_name, last_message, last_message_time) VALUES (?, ?, ?, ?, ?)',
+                [empresa_id, phone_number, contactName, content, new Date().toISOString()]
+            );
+            convId = result.lastID;
+        }
+
+        // Inserir mensagem
+        await dbRun(
+            `INSERT INTO messages (empresa_id, conversation_id, phone_number, message_type, content, is_from_me, timestamp) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [empresa_id, convId, phone_number, message_type, content, is_from_me ? 1 : 0, new Date().toISOString()]
+        );
+
+        // Atualizar última mensagem da conversa
+        await dbRun(
+            'UPDATE conversations SET last_message = ?, last_message_time = ? WHERE id = ?',
+            [content, new Date().toISOString(), convId]
+        );
+
+    } catch (error) {
+        console.error('[DATABASE] Erro ao salvar mensagem:', error);
+    }
+}
+
+// ==================== FUNÇÃO PARA INICIALIZAR WHATSAPP ====================
+async function initializeWhatsAppForEmpresa(empresaId) {
+    try {
+        const empresa = await getEmpresaById(empresaId);
+        if (!empresa) {
+            console.error(`[WA-${empresaId}] Empresa não encontrada`);
+            return false;
+        }
+
+        // Se já existe instância, retornar
+        if (whatsappInstances.has(empresaId)) {
+            console.log(`[WA-${empresaId}] ✅ Já inicializado`);
+            return true;
+        }
+
+        // Criar nova instância
+        const client = createWhatsAppInstance(empresaId, empresa.cnpj);
+        whatsappInstances.set(empresaId, client);
+
+        // Inicializar
+        await client.initialize();
+        
+        console.log(`[WA-${empresaId}] 🔄 Inicialização solicitada`);
+        return true;
+
+    } catch (error) {
+        console.error(`[WA-${empresaId}] ❌ Erro na inicialização:`, error);
+        await updateWhatsAppStatus(empresaId, 'error', null, error.message);
+        return false;
+    }
 }
 
 // ==================== ENDPOINTS DA API ====================
@@ -288,31 +490,77 @@ app.get('/health', (req, res) => {
     });
 });
 
-// 2. STATUS DA API (PUBLICO)
-app.get('/status', (req, res) => {
-    const empresaStatus = Array.from(empresas.values()).map(emp => ({
-        id: emp.id,
-        nome: emp.nome,
-        whatsapp_status: emp.whatsapp_status,
-        has_instance: whatsappInstances.has(emp.id)
-    }));
-    
-    res.json({
-        success: true,
-        server_time: new Date().toISOString(),
-        empresas: empresaStatus,
-        total_conversations: conversations.size,
-        total_messages: Array.from(messages.values()).reduce((acc, msgs) => acc + msgs.length, 0)
-    });
+// 2. STATUS GERAL (PUBLICO)
+app.get('/status', async (req, res) => {
+    try {
+        const empresasArray = await dbAll('SELECT id, nome, whatsapp_status FROM empresas');
+        
+        res.json({
+            success: true,
+            server_time: new Date().toISOString(),
+            empresas: empresasArray,
+            total_empresas: empresasArray.length,
+            whatsapp_instances: whatsappInstances.size
+        });
+    } catch (error) {
+        console.error('[STATUS] Erro:', error);
+        res.status(500).json({ success: false, error: 'Erro interno' });
+    }
 });
 
-// 3. INICIALIZAR WHATSAPP (PRIVADO)
+// 3. LISTAR EMPRESAS (PRIVADO)
+app.get('/empresas', authenticateToken, async (req, res) => {
+    try {
+        const empresas = await dbAll('SELECT * FROM empresas ORDER BY id');
+        
+        res.json({
+            success: true,
+            empresas: empresas,
+            total: empresas.length
+        });
+    } catch (error) {
+        console.error('[EMPRESAS] Erro ao listar:', error);
+        res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+});
+
+// 4. CADASTRAR EMPRESA (PRIVADO)
+app.post('/empresas', authenticateToken, async (req, res) => {
+    try {
+        const { cnpj, nome, telefone, email } = req.body;
+
+        if (!cnpj || !nome) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'CNPJ e nome são obrigatórios' 
+            });
+        }
+
+        const novaEmpresa = await createEmpresa(cnpj, nome, telefone, email);
+
+        res.json({
+            success: true,
+            message: 'Empresa cadastrada com sucesso',
+            empresa: novaEmpresa
+        });
+
+    } catch (error) {
+        console.error('[EMPRESAS] Erro ao cadastrar:', error);
+        if (error.message === 'CNPJ já cadastrado') {
+            res.status(400).json({ success: false, error: error.message });
+        } else {
+            res.status(500).json({ success: false, error: 'Erro interno' });
+        }
+    }
+});
+
+// 5. INICIALIZAR WHATSAPP (PRIVADO)
 app.post('/whatsapp/initialize/:empresa_id', authenticateToken, async (req, res) => {
     try {
         const { empresa_id } = req.params;
         const empresaId = parseInt(empresa_id);
         
-        const empresa = empresas.get(empresaId);
+        const empresa = await getEmpresaById(empresaId);
         if (!empresa) {
             return res.status(404).json({ 
                 success: false,
@@ -320,47 +568,38 @@ app.post('/whatsapp/initialize/:empresa_id', authenticateToken, async (req, res)
             });
         }
 
-        // Se já existe instância, retorna status atual
-        if (whatsappInstances.has(empresaId)) {
-            return res.json({ 
+        const success = await initializeWhatsAppForEmpresa(empresaId);
+
+        if (success) {
+            res.json({ 
                 success: true, 
-                message: 'WhatsApp já inicializado',
-                status: empresa.whatsapp_status,
-                qr_code: empresa.whatsapp_qr_code
+                message: 'WhatsApp inicializado com sucesso',
+                empresa_id: empresaId,
+                status: 'initializing'
+            });
+        } else {
+            res.status(500).json({ 
+                success: false,
+                error: 'Erro ao inicializar WhatsApp' 
             });
         }
-
-        // Criar nova instância
-        const client = createWhatsAppInstance(empresaId, empresa.cnpj);
-        whatsappInstances.set(empresaId, client);
-
-        // Inicializar
-        await client.initialize();
-
-        res.json({ 
-            success: true, 
-            message: 'WhatsApp inicializado com sucesso',
-            empresa_id: empresaId,
-            status: 'initializing',
-            next_step: 'Verificar QR Code em /whatsapp/status/' + empresaId
-        });
 
     } catch (error) {
         console.error('[WHATSAPP] Erro na inicialização:', error);
         res.status(500).json({ 
             success: false,
-            error: 'Erro interno do servidor: ' + error.message 
+            error: 'Erro interno: ' + error.message 
         });
     }
 });
 
-// 4. STATUS DO WHATSAPP (PUBLICO)
-app.get('/whatsapp/status/:empresa_id', (req, res) => {
+// 6. STATUS DO WHATSAPP (PUBLICO)
+app.get('/whatsapp/status/:empresa_id', async (req, res) => {
     try {
         const { empresa_id } = req.params;
         const empresaId = parseInt(empresa_id);
         
-        const empresa = empresas.get(empresaId);
+        const empresa = await getEmpresaById(empresaId);
         if (!empresa) {
             return res.status(404).json({ 
                 success: false,
@@ -383,12 +622,59 @@ app.get('/whatsapp/status/:empresa_id', (req, res) => {
         console.error('[WHATSAPP] Erro ao buscar status:', error);
         res.status(500).json({ 
             success: false,
-            error: 'Erro interno do servidor' 
+            error: 'Erro interno' 
         });
     }
 });
 
-// 5. ENVIAR MENSAGEM (PRIVADO)
+// 7. REINICIAR WHATSAPP (PRIVADO)
+app.post('/whatsapp/restart/:empresa_id', authenticateToken, async (req, res) => {
+    try {
+        const { empresa_id } = req.params;
+        const empresaId = parseInt(empresa_id);
+        
+        const empresa = await getEmpresaById(empresaId);
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        // Destruir instância atual se existir
+        const client = whatsappInstances.get(empresaId);
+        if (client) {
+            await client.destroy();
+            whatsappInstances.delete(empresaId);
+        }
+
+        // Inicializar nova instância
+        const success = await initializeWhatsAppForEmpresa(empresaId);
+
+        if (success) {
+            res.json({ 
+                success: true, 
+                message: 'WhatsApp reiniciado com sucesso',
+                empresa_id: empresaId,
+                status: 'restarting'
+            });
+        } else {
+            res.status(500).json({ 
+                success: false,
+                error: 'Erro ao reiniciar WhatsApp' 
+            });
+        }
+
+    } catch (error) {
+        console.error('[WHATSAPP] Erro ao reiniciar:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro interno: ' + error.message 
+        });
+    }
+});
+
+// 8. ENVIAR MENSAGEM (PRIVADO)
 app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
     try {
         const { empresa_id } = req.params;
@@ -402,7 +688,7 @@ app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
             });
         }
 
-        const empresa = empresas.get(empresaId);
+        const empresa = await getEmpresaById(empresaId);
         if (!empresa) {
             return res.status(404).json({ 
                 success: false,
@@ -437,23 +723,14 @@ app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
         // Enviar mensagem
         await client.sendMessage(chatId, message);
         
-        // Salvar mensagem localmente
-        const phoneKey = `${empresaId}_${chatId}`;
-        if (!messages.has(phoneKey)) {
-            messages.set(phoneKey, []);
-        }
-        
-        const newMessage = {
-            id: Date.now(),
+        // Salvar mensagem no banco
+        await saveMessageToDatabase({
             empresa_id: empresaId,
             phone_number: chatId,
             message_type: 'text',
             content: message,
-            is_from_me: true,
-            timestamp: new Date().toISOString()
-        };
-        
-        messages.get(phoneKey).push(newMessage);
+            is_from_me: true
+        });
 
         res.json({ 
             success: true, 
@@ -472,30 +749,26 @@ app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
     }
 });
 
-// 6. LISTAR CONVERSAS (PRIVADO)
-app.get('/messages/conversations/:empresa_id', authenticateToken, (req, res) => {
+// 9. LISTAR CONVERSAS (PRIVADO)
+app.get('/messages/conversations/:empresa_id', authenticateToken, async (req, res) => {
     try {
         const { empresa_id } = req.params;
         const empresaId = parseInt(empresa_id);
 
-        // Filtrar conversas da empresa
-        const empresaConversations = Array.from(conversations.values())
-            .filter(conv => conv.empresa_id === empresaId)
-            .map(conv => {
-                const phoneKey = `${empresaId}_${conv.phone_number}`;
-                const convMessages = messages.get(phoneKey) || [];
-                return {
-                    ...conv,
-                    message_count: convMessages.length,
-                    last_message: convMessages[convMessages.length - 1]?.content || conv.last_message
-                };
-            });
+        const conversations = await dbAll(`
+            SELECT c.*, COUNT(m.id) as message_count 
+            FROM conversations c 
+            LEFT JOIN messages m ON c.id = m.conversation_id 
+            WHERE c.empresa_id = ?
+            GROUP BY c.id 
+            ORDER BY c.last_message_time DESC
+        `, [empresaId]);
 
         res.json({
             success: true,
             empresa_id: empresaId,
-            conversations: empresaConversations,
-            total: empresaConversations.length,
+            conversations: conversations,
+            total: conversations.length,
             timestamp: new Date().toISOString()
         });
 
@@ -503,16 +776,16 @@ app.get('/messages/conversations/:empresa_id', authenticateToken, (req, res) => 
         console.error('[MESSAGES] Erro ao buscar conversas:', error);
         res.status(500).json({ 
             success: false,
-            error: 'Erro interno do servidor' 
+            error: 'Erro interno' 
         });
     }
 });
 
-// 7. TODAS AS MENSAGENS DE UM CONTATO (PRIVADO)
-app.get('/messages/all-conversation/:empresa_id/:phone', authenticateToken, (req, res) => {
+// 10. MENSAGENS DE UM CONTATO (PRIVADO)
+app.get('/messages/all-conversation/:empresa_id/:phone', authenticateToken, async (req, res) => {
     try {
         const { empresa_id, phone } = req.params;
-        const { page = 1, limit = 100, search } = req.query;
+        const { page = 1, limit = 100 } = req.query;
         const empresaId = parseInt(empresa_id);
 
         let normalizedPhone = phone;
@@ -520,40 +793,30 @@ app.get('/messages/all-conversation/:empresa_id/:phone', authenticateToken, (req
             normalizedPhone = normalizeNumber(phone);
         }
 
-        const phoneKey = `${empresaId}_${normalizedPhone}`;
-        let allMessages = messages.get(phoneKey) || [];
+        const offset = (page - 1) * limit;
 
-        // Aplicar busca se fornecida
-        if (search) {
-            allMessages = allMessages.filter(msg => 
-                msg.content.toLowerCase().includes(search.toLowerCase())
-            );
-        }
+        const messages = await dbAll(`
+            SELECT * FROM messages 
+            WHERE empresa_id = ? AND phone_number = ? 
+            ORDER BY timestamp ASC
+            LIMIT ? OFFSET ?
+        `, [empresaId, normalizedPhone, limit, offset]);
 
-        // Ordenar por timestamp (mais recente primeiro)
-        allMessages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        // Paginação
-        const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + parseInt(limit);
-        const paginatedMessages = allMessages.slice(startIndex, endIndex);
-
-        // Ordenar para exibição (mais antigo primeiro)
-        const messagesForDisplay = [...paginatedMessages].sort(
-            (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        const totalCount = await dbGet(
+            'SELECT COUNT(*) as total FROM messages WHERE empresa_id = ? AND phone_number = ?',
+            [empresaId, normalizedPhone]
         );
 
         res.json({
             success: true,
             empresa_id: empresaId,
             phone_number: normalizedPhone,
-            messages: messagesForDisplay,
+            messages: messages,
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                total: allMessages.length,
-                totalPages: Math.ceil(allMessages.length / limit),
-                hasNextPage: endIndex < allMessages.length
+                total: totalCount.total,
+                totalPages: Math.ceil(totalCount.total / limit)
             },
             timestamp: new Date().toISOString()
         });
@@ -562,385 +825,8 @@ app.get('/messages/all-conversation/:empresa_id/:phone', authenticateToken, (req
         console.error('[MESSAGES] Erro ao buscar mensagens:', error);
         res.status(500).json({ 
             success: false,
-            error: 'Erro interno do servidor' 
+            error: 'Erro interno' 
         });
-    }
-});
-
-// 8. BUSCAR CONVERSAS (PRIVADO)
-app.get('/messages/search-conversations/:empresa_id', authenticateToken, (req, res) => {
-    try {
-        const { empresa_id } = req.params;
-        const { search, page = 1, limit = 20 } = req.query;
-        const empresaId = parseInt(empresa_id);
-
-        let empresaConversations = Array.from(conversations.values())
-            .filter(conv => conv.empresa_id === empresaId);
-
-        // Aplicar busca
-        if (search) {
-            empresaConversations = empresaConversations.filter(conv =>
-                conv.contact_name.toLowerCase().includes(search.toLowerCase()) ||
-                conv.phone_number.includes(search)
-            );
-        }
-
-        // Paginação
-        const startIndex = (page - 1) * limit;
-        const paginatedConversations = empresaConversations.slice(startIndex, startIndex + parseInt(limit));
-
-        res.json({
-            success: true,
-            empresa_id: empresaId,
-            conversations: paginatedConversations,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: empresaConversations.length,
-                hasMore: startIndex + parseInt(limit) < empresaConversations.length
-            },
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        console.error('[MESSAGES] Erro ao buscar conversas:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Erro interno do servidor' 
-        });
-    }
-});
-
-// 9. CRIAR CONVERSA (PRIVADO)
-app.post('/messages/conversation/:empresa_id', authenticateToken, (req, res) => {
-    try {
-        const { empresa_id } = req.params;
-        const { phone_number, contact_name } = req.body;
-        const empresaId = parseInt(empresa_id);
-
-        if (!phone_number) {
-            return res.status(400).json({ 
-                success: false,
-                error: 'phone_number é obrigatório' 
-            });
-        }
-
-        const normalizedPhone = normalizeNumber(phone_number);
-        const phoneKey = `${empresaId}_${normalizedPhone}`;
-
-        // Se já existe, retorna a existente
-        if (conversations.has(phoneKey)) {
-            return res.json({
-                success: true,
-                conversation: conversations.get(phoneKey),
-                exists: true
-            });
-        }
-
-        // Criar nova conversa
-        const newConversation = {
-            id: phoneKey,
-            empresa_id: empresaId,
-            phone_number: normalizedPhone,
-            contact_name: contact_name || `Cliente ${normalizedPhone.replace('@c.us', '').slice(-4)}`,
-            last_message: 'Conversa iniciada',
-            last_message_time: new Date().toISOString(),
-            unread_count: 0
-        };
-
-        conversations.set(phoneKey, newConversation);
-        messages.set(phoneKey, []);
-
-        res.json({
-            success: true,
-            conversation: newConversation,
-            exists: false,
-            message: 'Conversa criada com sucesso'
-        });
-
-    } catch (error) {
-        console.error('[MESSAGES] Erro ao criar conversa:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Erro interno do servidor' 
-        });
-    }
-});
-
-// ==================== ENDPOINTS PARA CONTROLE DO WHATSAPP ====================
-
-// 1. REINICIAR CONEXÃO DO WHATSAPP
-app.post('/whatsapp/restart/:empresa_id', authenticateToken, async (req, res) => {
-    try {
-        const { empresa_id } = req.params;
-        const empresaId = parseInt(empresa_id);
-        
-        const empresa = empresas.get(empresaId);
-        if (!empresa) {
-            return res.status(404).json({ 
-                success: false,
-                error: 'Empresa não encontrada' 
-            });
-        }
-
-        // Verificar se existe instância
-        const client = whatsappInstances.get(empresaId);
-        
-        if (client) {
-            console.log(`[WA-${empresaId}] 🔄 Reiniciando conexão...`);
-            
-            // Destruir instância atual
-            await client.destroy();
-            whatsappInstances.delete(empresaId);
-            
-            // Limpar QR Code e status
-            empresa.whatsapp_status = 'disconnected';
-            empresa.whatsapp_qr_code = null;
-            empresa.whatsapp_error = null;
-        }
-
-        // Criar nova instância
-        const newClient = createWhatsAppInstance(empresaId, empresa.cnpj);
-        whatsappInstances.set(empresaId, newClient);
-
-        // Inicializar
-        await newClient.initialize();
-
-        res.json({ 
-            success: true, 
-            message: 'WhatsApp reiniciado com sucesso',
-            empresa_id: empresaId,
-            status: 'restarting'
-        });
-
-    } catch (error) {
-        console.error('[WHATSAPP] Erro ao reiniciar:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Erro ao reiniciar WhatsApp: ' + error.message 
-        });
-    }
-});
-
-// 2. DESCONECTAR WHATSAPP
-app.post('/whatsapp/disconnect/:empresa_id', authenticateToken, async (req, res) => {
-    try {
-        const { empresa_id } = req.params;
-        const empresaId = parseInt(empresa_id);
-        
-        const empresa = empresas.get(empresaId);
-        if (!empresa) {
-            return res.status(404).json({ 
-                success: false,
-                error: 'Empresa não encontrada' 
-            });
-        }
-
-        const client = whatsappInstances.get(empresaId);
-        
-        if (client) {
-            await client.destroy();
-            whatsappInstances.delete(empresaId);
-        }
-
-        // Resetar status
-        empresa.whatsapp_status = 'disconnected';
-        empresa.whatsapp_qr_code = null;
-        empresa.whatsapp_error = null;
-
-        res.json({ 
-            success: true, 
-            message: 'WhatsApp desconectado com sucesso',
-            empresa_id: empresaId
-        });
-
-    } catch (error) {
-        console.error('[WHATSAPP] Erro ao desconectar:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Erro ao desconectar WhatsApp' 
-        });
-    }
-});
-
-// 3. FORÇAR NOVO QR CODE
-app.post('/whatsapp/refresh-qr/:empresa_id', authenticateToken, async (req, res) => {
-    try {
-        const { empresa_id } = req.params;
-        const empresaId = parseInt(empresa_id);
-        
-        const empresa = empresas.get(empresaId);
-        if (!empresa) {
-            return res.status(404).json({ 
-                success: false,
-                error: 'Empresa não encontrada' 
-            });
-        }
-
-        const client = whatsappInstances.get(empresaId);
-        
-        if (!client) {
-            return res.status(400).json({ 
-                success: false,
-                error: 'WhatsApp não está inicializado' 
-            });
-        }
-
-        // Forçar novo QR Code resetando a sessão
-        if (client) {
-            await client.destroy();
-            whatsappInstances.delete(empresaId);
-            
-            // Nova instância
-            const newClient = createWhatsAppInstance(empresaId, empresa.cnpj);
-            whatsappInstances.set(empresaId, newClient);
-            await newClient.initialize();
-        }
-
-        res.json({ 
-            success: true, 
-            message: 'Solicitando novo QR Code...',
-            empresa_id: empresaId,
-            status: 'requesting_qr'
-        });
-
-    } catch (error) {
-        console.error('[WHATSAPP] Erro ao refresh QR:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Erro ao gerar novo QR Code' 
-        });
-    }
-});
-
-// ==================== ENDPOINTS DE EMPRESAS ====================
-
-// 1. LISTAR TODAS AS EMPRESAS
-app.get('/empresas', authenticateToken, (req, res) => {
-    try {
-        const empresasArray = Array.from(empresas.values());
-        res.json({
-            success: true,
-            empresas: empresasArray,
-            total: empresasArray.length
-        });
-    } catch (error) {
-        console.error('[EMPRESAS] Erro ao listar empresas:', error);
-        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
-    }
-});
-
-// 2. CADASTRAR NOVA EMPRESA
-app.post('/empresas', authenticateToken, (req, res) => {
-    try {
-        const { cnpj, nome, telefone, email } = req.body;
-
-        if (!cnpj || !nome) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'CNPJ e nome são obrigatórios' 
-            });
-        }
-
-        // Verificar se CNPJ já existe
-        const empresaExistente = Array.from(empresas.values()).find(
-            emp => emp.cnpj === cnpj
-        );
-
-        if (empresaExistente) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'CNPJ já cadastrado' 
-            });
-        }
-
-        // Criar nova empresa
-        const novaEmpresaId = Math.max(...Array.from(empresas.keys())) + 1;
-        
-        const novaEmpresa = {
-            id: novaEmpresaId,
-            cnpj: cnpj,
-            nome: nome,
-            telefone: telefone || '',
-            email: email || '',
-            whatsapp_status: 'disconnected',
-            whatsapp_qr_code: null,
-            whatsapp_error: null,
-            created_at: new Date().toISOString()
-        };
-
-        empresas.set(novaEmpresaId, novaEmpresa);
-
-        res.json({
-            success: true,
-            message: 'Empresa cadastrada com sucesso',
-            empresa: novaEmpresa
-        });
-
-    } catch (error) {
-        console.error('[EMPRESAS] Erro ao cadastrar empresa:', error);
-        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
-    }
-});
-
-// 3. BUSCAR EMPRESA POR ID
-app.get('/empresas/:id', authenticateToken, (req, res) => {
-    try {
-        const { id } = req.params;
-        const empresaId = parseInt(id);
-        
-        const empresa = empresas.get(empresaId);
-        
-        if (!empresa) {
-            return res.status(404).json({ 
-                success: false, 
-                error: 'Empresa não encontrada' 
-            });
-        }
-
-        res.json({
-            success: true,
-            empresa: empresa
-        });
-
-    } catch (error) {
-        console.error('[EMPRESAS] Erro ao buscar empresa:', error);
-        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
-    }
-});
-
-// 4. ATUALIZAR EMPRESA
-app.put('/empresas/:id', authenticateToken, (req, res) => {
-    try {
-        const { id } = req.params;
-        const { nome, telefone, email } = req.body;
-        const empresaId = parseInt(id);
-        
-        const empresa = empresas.get(empresaId);
-        
-        if (!empresa) {
-            return res.status(404).json({ 
-                success: false, 
-                error: 'Empresa não encontrada' 
-            });
-        }
-
-        // Atualizar dados
-        if (nome) empresa.nome = nome;
-        if (telefone) empresa.telefone = telefone;
-        if (email) empresa.email = email;
-
-        empresas.set(empresaId, empresa);
-
-        res.json({
-            success: true,
-            message: 'Empresa atualizada com sucesso',
-            empresa: empresa
-        });
-
-    } catch (error) {
-        console.error('[EMPRESAS] Erro ao atualizar empresa:', error);
-        res.status(500).json({ success: false, error: 'Erro interno do servidor' });
     }
 });
 
@@ -949,7 +835,8 @@ app.get('/', (req, res) => {
     res.json({
         success: true,
         message: '🚀 API WhatsApp para Bubble - Online',
-        version: '2.0',
+        version: '3.0',
+        database: 'SQLite Persistente',
         endpoints: {
             public: [
                 'GET  /health',
@@ -957,12 +844,13 @@ app.get('/', (req, res) => {
                 'GET  /whatsapp/status/:empresa_id'
             ],
             private: [
+                'GET  /empresas',
+                'POST /empresas',
                 'POST /whatsapp/initialize/:empresa_id',
+                'POST /whatsapp/restart/:empresa_id',
                 'POST /whatsapp/send/:empresa_id',
                 'GET  /messages/conversations/:empresa_id',
-                'GET  /messages/all-conversation/:empresa_id/:phone',
-                'GET  /messages/search-conversations/:empresa_id',
-                'POST /messages/conversation/:empresa_id'
+                'GET  /messages/all-conversation/:empresa_id/:phone'
             ]
         },
         authentication: {
@@ -973,26 +861,32 @@ app.get('/', (req, res) => {
     });
 });
 
-// Inicializar servidor
+// ==================== INICIALIZAÇÃO DO SERVIDOR ====================
 async function startServer() {
     try {
-        initializeSampleData();
+        await initializeDatabase();
+        
+        // 🔄 CARREGAR EMPRESAS DO BANCO
+        empresas = await getAllEmpresas();
+        console.log(`[DATABASE] 📊 ${empresas.size} empresas carregadas do banco`);
         
         console.log('🚀 Iniciando API WhatsApp para Bubble...');
         console.log('📋 Endpoints disponíveis:');
         console.log('   GET  /health');
         console.log('   GET  /status');
+        console.log('   GET  /empresas');
+        console.log('   POST /empresas');
         console.log('   GET  /whatsapp/status/:empresa_id');
         console.log('   POST /whatsapp/initialize/:empresa_id');
+        console.log('   POST /whatsapp/restart/:empresa_id');
         console.log('   POST /whatsapp/send/:empresa_id');
-        console.log('   GET  /messages/conversations/:empresa_id');
-        console.log('   GET  /messages/all-conversation/:empresa_id/:phone');
         
         server.listen(PORT, () => {
             console.log(`✅ API rodando na porta ${PORT}`);
             console.log(`🌐 URL: http://localhost:${PORT}`);
             console.log(`🔐 Token fixo: ${FIXED_TOKENS[0]}`);
-            console.log(`📱 Empresas: 1 (Farmácia Central), 2 (Drogaria Popular)`);
+            console.log(`💾 Banco: SQLite persistente`);
+            console.log(`📱 Empresas no banco: ${Array.from(empresas.values()).map(e => e.id).join(', ')}`);
         });
     } catch (error) {
         console.error('❌ Erro ao iniciar servidor:', error);
@@ -1006,6 +900,10 @@ process.on('SIGINT', async () => {
     
     for (const [empresaId, client] of whatsappInstances) {
         await client.destroy();
+    }
+    
+    if (db) {
+        db.close();
     }
     
     process.exit(0);
