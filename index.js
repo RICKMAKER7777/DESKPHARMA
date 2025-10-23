@@ -1,4 +1,4 @@
-// index.js - API WhatsApp com Gestão de Sessão Corrigida
+// index.js - API WhatsApp com Heartbeat e Conexão Persistente
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -300,7 +300,8 @@ const authenticateToken = (req, res, next) => {
 
 // ==================== STORAGE EM MEMÓRIA ====================
 const whatsappInstances = new Map();
-const instanceCreationLocks = new Map(); // 🔥 EVITAR CRIAÇÃO DUPLICADA
+const instanceCreationLocks = new Map();
+const connectionHeartbeats = new Map(); // 🔥 HEARTBEATS PARA MANTER CONEXÃO
 
 // ==================== FUNÇÕES AUXILIARES ====================
 function normalizeNumber(number) {
@@ -376,6 +377,54 @@ async function clearProblematicSession(empresaId) {
     }
 }
 
+// 🔥 INICIAR HEARTBEAT PARA MANTER CONEXÃO
+function startConnectionHeartbeat(empresaId, client) {
+    console.log(`[WA-${empresaId}] ❤️  Iniciando heartbeat de conexão...`);
+    
+    // Parar heartbeat anterior se existir
+    if (connectionHeartbeats.has(empresaId)) {
+        clearInterval(connectionHeartbeats.get(empresaId));
+    }
+    
+    const heartbeat = setInterval(async () => {
+        try {
+            const state = await client.getState();
+            if (state === 'CONNECTED') {
+                console.log(`[WA-${empresaId}] ❤️  Conexão ativa - Estado: ${state}`);
+                
+                // 🔥 MANTER ATIVIDADE ENVIANDO COMANDO SIMPLES
+                try {
+                    // Comando simples para manter conexão ativa
+                    await client.getChats({ limit: 1 });
+                } catch (activityError) {
+                    console.log(`[WA-${empresaId}] ℹ️  Heartbeat activity:`, activityError.message);
+                }
+            } else {
+                console.log(`[WA-${empresaId}] ⚠️  Conexão perdida - Estado: ${state}`);
+                // Tentar recuperar conexão
+                try {
+                    await client.initialize();
+                } catch (reconnectError) {
+                    console.log(`[WA-${empresaId}] ❌ Erro ao reconectar:`, reconnectError.message);
+                }
+            }
+        } catch (error) {
+            console.log(`[WA-${empresaId}] ❌ Erro no heartbeat:`, error.message);
+        }
+    }, 30000); // 🔥 A CADA 30 SEGUNDOS
+    
+    connectionHeartbeats.set(empresaId, heartbeat);
+}
+
+// 🔥 PARAR HEARTBEAT
+function stopConnectionHeartbeat(empresaId) {
+    if (connectionHeartbeats.has(empresaId)) {
+        clearInterval(connectionHeartbeats.get(empresaId));
+        connectionHeartbeats.delete(empresaId);
+        console.log(`[WA-${empresaId}] 💔 Heartbeat parado`);
+    }
+}
+
 // ==================== WHATSAPP INSTANCE CORRIGIDA ====================
 function createWhatsAppInstance(empresaId, cnpj) {
     console.log(`[WA-${empresaId}] 🚀 Criando instância WhatsApp`);
@@ -399,40 +448,44 @@ function createWhatsAppInstance(empresaId, cnpj) {
                 '--disable-features=site-per-process',
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding'
+                '--disable-renderer-backgrounding',
+                '--disable-dev-shm-usage',
+                '--disable-extensions',
+                '--disable-ipc-flooding-protection'
             ],
             timeout: 60000,
             ignoreHTTPSErrors: true
         },
-        // 🔥 CONFIGURAÇÕES CRÍTICAS PARA EVITAR CONFLITOS
+        // 🔥 CONFIGURAÇÕES PARA CONEXÃO ESTÁVEL
         takeoverOnConflict: false,
-        takeoverTimeoutMs: 0, // Desabilitar takeover
+        takeoverTimeoutMs: 0,
         restartOnAuthFail: false,
-        qrMaxRetries: 1, // Apenas 1 tentativa
+        qrMaxRetries: 1,
         authTimeout: 60000,
-        qrTimeout: 45000, // 45 segundos
-        multiDevice: true
+        qrTimeout: 45000,
+        multiDevice: true,
+        // 🔥 CONFIGURAÇÕES ADICIONAIS PARA ESTABILIDADE
+        webVersionCache: {
+            type: 'remote',
+            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
+        }
     });
 
     let qrTimeout;
     let isAuthenticated = false;
-    let hasEmittedQR = false;
+    let isReady = false;
     
     console.log(`[WA-${empresaId}] 📱 Instância criada`);
 
-    // 🔥 EVENTO QR CODE - SIMPLIFICADO
+    // 🔥 EVENTO QR CODE
     client.on('qr', async (qr) => {
         try {
             console.log(`[WA-${empresaId}] 🔄 QR Code recebido`);
             
-            // Limpar timeout anterior
             if (qrTimeout) {
                 clearTimeout(qrTimeout);
                 qrTimeout = null;
             }
-
-            // Marcar que QR foi emitido
-            hasEmittedQR = true;
 
             const dataUrl = await QRCode.toDataURL(qr, {
                 width: 300,
@@ -444,9 +497,8 @@ function createWhatsAppInstance(empresaId, cnpj) {
             
             await updateWhatsAppStatus(empresaId, 'qr_code', dataUrl, null);
             
-            // 🔥 TIMEOUT REDUZIDO E INTELIGENTE
             qrTimeout = setTimeout(async () => {
-                if (isAuthenticated) {
+                if (isAuthenticated || isReady) {
                     console.log(`[WA-${empresaId}] ✅ Já autenticado, ignorando timeout`);
                     return;
                 }
@@ -456,17 +508,9 @@ function createWhatsAppInstance(empresaId, cnpj) {
                 try {
                     const state = await client.getState();
                     console.log(`[WA-${empresaId}] 🔍 Estado atual: ${state}`);
-                    
-                    if (state === 'CONNECTED') {
-                        console.log(`[WA-${empresaId}] ✅ Conectado, ignorando timeout`);
-                        return;
-                    }
                 } catch (error) {
                     console.log(`[WA-${empresaId}] ❌ Erro ao verificar estado: ${error.message}`);
                 }
-                
-                // 🔥 NÃO RECRIAR INSTÂNCIA - APENAS AGUARDAR
-                console.log(`[WA-${empresaId}] ⏳ Aguardando escaneamento...`);
                 
             }, 45000);
 
@@ -475,7 +519,7 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
     });
 
-    // 🔥 EVENTO AUTHENTICATED - DETECTAR LEITURA DO QR
+    // 🔥 EVENTO AUTHENTICATED
     client.on('authenticated', async (session) => {
         console.log(`[WA-${empresaId}] 🔑 AUTHENTICATED - QR Code lido com sucesso!`);
         
@@ -487,7 +531,6 @@ function createWhatsAppInstance(empresaId, cnpj) {
         isAuthenticated = true;
         await updateWhatsAppStatus(empresaId, 'authenticated', null, null);
         
-        // 🔥 CONFIRMAR QUE O CELULAR RECONHECEU
         console.log(`[WA-${empresaId}] 📱 Dispositivo reconheceu a autenticação`);
     });
 
@@ -501,17 +544,42 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
         
         isAuthenticated = true;
+        isReady = true;
+        
         await updateWhatsAppStatus(empresaId, 'ready', null, null);
         
         console.log(`[WA-${empresaId}] ✅ CONEXÃO ESTABELECIDA COM SUCESSO`);
+        
+        // 🔥 INICIAR HEARTBEAT APÓS READY
+        startConnectionHeartbeat(empresaId, client);
+        
+        // 🔥 TESTE INICIAL DE FUNCIONAMENTO
+        try {
+            const chats = await client.getChats();
+            console.log(`[WA-${empresaId}] 💬 ${chats.length} chats carregados`);
+            
+            // Teste de envio para si mesmo
+            const me = client.info.wid.user;
+            await client.sendMessage(`${me}@c.us`, '🤖 Bot conectado e funcionando!');
+            console.log(`[WA-${empresaId}] ✅ Mensagem de teste enviada`);
+        } catch (testError) {
+            console.log(`[WA-${empresaId}] ℹ️  Teste inicial:`, testError.message);
+        }
     });
 
-    // 🔥 EVENTO CHANGE_STATE
+    // 🔥 EVENTO CHANGE_STATE - MONITORAR CONEXÃO
     client.on('change_state', async (state) => {
         console.log(`[WA-${empresaId}] 🔄 MUDANÇA DE ESTADO: ${state}`);
         
         if (state === 'CONNECTED') {
             console.log(`[WA-${empresaId}] 🌐 CONECTADO AO WHATSAPP WEB`);
+            if (!isReady) {
+                console.log(`[WA-${empresaId}] 🔥 Reconectado - Reiniciando heartbeat`);
+                startConnectionHeartbeat(empresaId, client);
+            }
+        } else if (state === 'DISCONNECTED') {
+            console.log(`[WA-${empresaId}] 🔌 DESCONECTADO - Tentando recuperar...`);
+            isReady = false;
         }
     });
 
@@ -524,9 +592,9 @@ function createWhatsAppInstance(empresaId, cnpj) {
             qrTimeout = null;
         }
         
+        stopConnectionHeartbeat(empresaId);
         await updateWhatsAppStatus(empresaId, 'auth_failure', null, msg);
         
-        // 🔥 LIMPAR SESSÃO EM CASO DE FALHA
         setTimeout(() => {
             clearProblematicSession(empresaId);
         }, 5000);
@@ -542,6 +610,9 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
         
         isAuthenticated = false;
+        isReady = false;
+        stopConnectionHeartbeat(empresaId);
+        
         await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
         
         // Remover instância da memória
@@ -550,17 +621,39 @@ function createWhatsAppInstance(empresaId, cnpj) {
         if (reason === 'LOGOUT') {
             console.log(`[WA-${empresaId}] 🚪 LOGOUT detectado - limpando sessão...`);
             await clearProblematicSession(empresaId);
+        } else {
+            // 🔥 TENTAR RECONEXÃO AUTOMÁTICA
+            console.log(`[WA-${empresaId}] 🔄 Tentando reconexão em 10s...`);
+            setTimeout(async () => {
+                try {
+                    console.log(`[WA-${empresaId}] 🔄 Iniciando reconexão...`);
+                    await client.initialize();
+                } catch (reconnectError) {
+                    console.log(`[WA-${empresaId}] ❌ Erro na reconexão:`, reconnectError.message);
+                }
+            }, 10000);
         }
     });
 
-    // 🔥 EVENTO MESSAGE
+    // 🔥 EVENTO MESSAGE - COM TRATAMENTO MELHORADO
     client.on('message', async (msg) => {
         try {
-            if (msg.from === 'status@broadcast') return;
+            // Ignorar mensagens de newsletter e status
+            if (msg.from.includes('newsletter') || msg.from.includes('status') || msg.from.includes('broadcast')) {
+                console.log(`[WA-${empresaId}] 📨 Mensagem de newsletter/broadcast ignorada`);
+                return;
+            }
             
             const messageContent = msg.body || getDefaultMessageContent(msg.type);
             
-            console.log(`[WA-${empresaId}] 📩 MENSAGEM de ${msg.from}: ${messageContent.substring(0, 50)}`);
+            console.log(`[WA-${empresaId}] 📩 MENSAGEM de ${msg.from}: ${messageContent.substring(0, 100)}`);
+            
+            // 🔥 CONFIRMAR QUE ESTÁ RECEBENDO MENSAGENS
+            if (!isReady) {
+                console.log(`[WA-${empresaId}] 💡 RECEBENDO MENSAGENS - CONEXÃO ATIVA!`);
+                isReady = true;
+                await updateWhatsAppStatus(empresaId, 'ready', null, null);
+            }
             
             await saveMessageToDatabase({
                 empresa_id: empresaId,
@@ -575,12 +668,20 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
     });
 
+    // 🔥 EVENTOS ADICIONAIS PARA DEBUG
+    client.on('loading_screen', (percent, message) => {
+        console.log(`[WA-${empresaId}] 📊 Carregando: ${percent}% - ${message}`);
+    });
+
+    client.on('message_ack', (msg, ack) => {
+        console.log(`[WA-${empresaId}] ✅ ACK: ${ack} para mensagem de ${msg.from}`);
+    });
+
     return client;
 }
 
 // ==================== FUNÇÃO PARA INICIALIZAR WHATSAPP CORRIGIDA ====================
 async function initializeWhatsAppForEmpresa(empresaId) {
-    // 🔥 BLOQUEAR CRIAÇÃO DUPLICADA
     if (instanceCreationLocks.has(empresaId)) {
         console.log(`[WA-${empresaId}] ⏳ Inicialização já em andamento...`);
         return true;
@@ -610,6 +711,7 @@ async function initializeWhatsAppForEmpresa(empresaId) {
             } catch (error) {
                 console.log(`[WA-${empresaId}] 🔄 Instância inválida, recriando...`);
                 try {
+                    stopConnectionHeartbeat(empresaId);
                     await existingClient.destroy();
                 } catch (destroyError) {
                     console.log(`[WA-${empresaId}] ℹ️  Erro ao destruir:`, destroyError.message);
@@ -620,13 +722,11 @@ async function initializeWhatsAppForEmpresa(empresaId) {
 
         console.log(`[WA-${empresaId}] 🚀 Iniciando nova instância WhatsApp...`);
         
-        // 🔥 LIMPAR SESSÃO PROBLEMÁTICA ANTES DE INICIAR
         await clearProblematicSession(empresaId);
         
         const client = createWhatsAppInstance(empresaId, empresa.cnpj);
         whatsappInstances.set(empresaId, client);
 
-        // 🔥 INICIALIZAÇÃO COM TIMEOUT CONTROLADO
         await client.initialize();
         
         console.log(`[WA-${empresaId}] 📱 Instância inicializada com sucesso`);
@@ -636,14 +736,13 @@ async function initializeWhatsAppForEmpresa(empresaId) {
         console.error(`[WA-${empresaId}] ❌ Erro na inicialização:`, error);
         await updateWhatsAppStatus(empresaId, 'error', null, error.message);
         
-        // Limpar instância problemática
         if (whatsappInstances.has(empresaId)) {
             whatsappInstances.delete(empresaId);
         }
+        stopConnectionHeartbeat(empresaId);
         
         return false;
     } finally {
-        // 🔥 LIBERAR BLOQUEIO
         instanceCreationLocks.delete(empresaId);
     }
 }
@@ -657,7 +756,8 @@ app.get('/health', (req, res) => {
         status: 'online', 
         timestamp: new Date().toISOString(),
         empresas_ativas: whatsappInstances.size,
-        environment: IS_RENDER ? 'render' : 'local'
+        environment: IS_RENDER ? 'render' : 'local',
+        heartbeats_ativos: connectionHeartbeats.size
     });
 });
 
@@ -672,13 +772,16 @@ app.get('/status', async (req, res) => {
             environment: IS_RENDER ? 'render' : 'local',
             empresas: empresasArray,
             total_empresas: empresasArray.length,
-            whatsapp_instances: whatsappInstances.size
+            whatsapp_instances: whatsappInstances.size,
+            heartbeats_ativos: connectionHeartbeats.size
         });
     } catch (error) {
         console.error('[STATUS] Erro:', error);
         res.status(500).json({ success: false, error: 'Erro interno' });
     }
 });
+
+// [RESTANTE DOS ENDPOINTS PERMANECE IGUAL...]
 
 // LISTAR EMPRESAS
 app.get('/empresas', authenticateToken, async (req, res) => {
@@ -787,6 +890,7 @@ app.get('/whatsapp/status/:empresa_id', async (req, res) => {
             qr_code: empresa.whatsapp_qr_code,
             error: empresa.whatsapp_error,
             has_instance: whatsappInstances.has(empresaId),
+            has_heartbeat: connectionHeartbeats.has(empresaId),
             timestamp: new Date().toISOString()
         });
 
@@ -818,6 +922,7 @@ app.post('/whatsapp/restart/:empresa_id', authenticateToken, async (req, res) =>
         const client = whatsappInstances.get(empresaId);
         if (client) {
             try {
+                stopConnectionHeartbeat(empresaId);
                 await client.destroy();
                 console.log(`[WA-${empresaId}] ✅ Instância anterior destruída`);
             } catch (destroyError) {
@@ -826,7 +931,6 @@ app.post('/whatsapp/restart/:empresa_id', authenticateToken, async (req, res) =>
             whatsappInstances.delete(empresaId);
         }
 
-        // 🔥 LIMPAR SESSÃO COMPLETAMENTE
         await clearProblematicSession(empresaId);
         
         console.log(`[WA-${empresaId}] ⏳ Aguardando 5s antes de recriar...`);
@@ -1016,7 +1120,7 @@ app.get('/', (req, res) => {
     res.json({
         success: true,
         message: '🚀 API WhatsApp para Bubble - Online',
-        version: '6.0',
+        version: '7.0',
         environment: IS_RENDER ? 'render' : 'local',
         database: 'SQLite Persistente',
         database_path: DB_PATH,
@@ -1058,12 +1162,12 @@ async function startServer() {
         server.listen(PORT, () => {
             console.log(`✅ API rodando na porta ${PORT}`);
             console.log(`🔐 Token fixo: ${FIXED_TOKENS[0]}`);
-            console.log(`📱 Versão: 6.0 - Gestão de Sessão Corrigida`);
-            console.log(`🔥 Correções implementadas:`);
-            console.log(`   ✅ Detecção correta do QR Code lido`);
-            console.log(`   ✅ Prevenção de criação duplicada`);
-            console.log(`   ✅ Limpeza automática de sessões problemáticas`);
-            console.log(`   ✅ Tratamento melhorado de LOGOUT`);
+            console.log(`📱 Versão: 7.0 - Heartbeat e Conexão Persistente`);
+            console.log(`🔥 Novas funcionalidades:`);
+            console.log(`   ❤️  Heartbeat a cada 30s para manter conexão`);
+            console.log(`   🔄 Reconexão automática`);
+            console.log(`   📊 Monitoramento contínuo do estado`);
+            console.log(`   🚫 Filtro de newsletters/broadcasts`);
         });
     } catch (error) {
         console.error('❌ Erro ao iniciar servidor:', error);
@@ -1074,6 +1178,11 @@ async function startServer() {
 // Graceful shutdown
 process.on('SIGINT', async () => {
     console.log('🔌 Encerrando servidor...');
+    
+    // Parar todos os heartbeats
+    for (const [empresaId] of connectionHeartbeats) {
+        stopConnectionHeartbeat(empresaId);
+    }
     
     for (const [empresaId, client] of whatsappInstances) {
         try {
