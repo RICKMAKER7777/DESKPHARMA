@@ -635,38 +635,42 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
     });
 
-    // 🔥 EVENTO MESSAGE - COM TRATAMENTO MELHORADO
+    // 🔥 EVENTO MESSAGE - COM DEBUG DETALHADO
     client.on('message', async (msg) => {
-        try {
-            // Ignorar mensagens de newsletter e status
-            if (msg.from.includes('newsletter') || msg.from.includes('status') || msg.from.includes('broadcast')) {
-                console.log(`[WA-${empresaId}] 📨 Mensagem de newsletter/broadcast ignorada`);
-                return;
-            }
-            
-            const messageContent = msg.body || getDefaultMessageContent(msg.type);
-            
-            console.log(`[WA-${empresaId}] 📩 MENSAGEM de ${msg.from}: ${messageContent.substring(0, 100)}`);
-            
-            // 🔥 CONFIRMAR QUE ESTÁ RECEBENDO MENSAGENS
-            if (!isReady) {
-                console.log(`[WA-${empresaId}] 💡 RECEBENDO MENSAGENS - CONEXÃO ATIVA!`);
-                isReady = true;
-                await updateWhatsAppStatus(empresaId, 'ready', null, null);
-            }
-            
-            await saveMessageToDatabase({
-                empresa_id: empresaId,
-                phone_number: msg.fromMe ? msg.to : msg.from,
-                message_type: msg.type,
-                content: messageContent,
-                is_from_me: msg.fromMe
-            });
-
-        } catch (error) {
-            console.error(`[WA-${empresaId}] ❌ Erro ao processar mensagem:`, error);
+    try {
+        console.log(`[WA-${empresaId}] 📩 NOVA MENSAGEM DETECTADA:`);
+        console.log(`[WA-${empresaId}] De: ${msg.from}`);
+        console.log(`[WA-${empresaId}] Para: ${msg.to}`);
+        console.log(`[WA-${empresaId}] Tipo: ${msg.type}`);
+        console.log(`[WA-${empresaId}] Corpo: ${msg.body}`);
+        console.log(`[WA-${empresaId}] Timestamp: ${msg.timestamp}`);
+        console.log(`[WA-${empresaId}] FromMe: ${msg.fromMe}`);
+        
+        // Ignorar mensagens de newsletter e status
+        if (msg.from.includes('newsletter') || msg.from.includes('status') || msg.from.includes('broadcast')) {
+            console.log(`[WA-${empresaId}] 📨 Mensagem de newsletter/broadcast ignorada`);
+            return;
         }
-    });
+        
+        const messageContent = msg.body || getDefaultMessageContent(msg.type);
+        
+        console.log(`[WA-${empresaId}] 💾 Salvando no banco...`);
+        
+        await saveMessageToDatabase({
+            empresa_id: empresaId,
+            phone_number: msg.fromMe ? msg.to : msg.from,
+            message_type: msg.type,
+            content: messageContent,
+            is_from_me: msg.fromMe,
+            timestamp: new Date(msg.timestamp * 1000) // 🔥 CORRIGIR TIMESTAMP
+        });
+        
+        console.log(`[WA-${empresaId}] ✅ Mensagem salva com sucesso!`);
+
+    } catch (error) {
+        console.error(`[WA-${empresaId}] ❌ Erro ao processar mensagem:`, error);
+    }
+});
 
     // 🔥 EVENTOS ADICIONAIS PARA DEBUG
     client.on('loading_screen', (percent, message) => {
@@ -1062,6 +1066,100 @@ app.get('/messages/conversations/:empresa_id', authenticateToken, async (req, re
         res.status(500).json({ 
             success: false,
             error: 'Erro interno' 
+        });
+    }
+});
+
+// 🔥 SINCRONIZAR MENSAGENS EXISTENTES DO WHATSAPP
+app.post('/whatsapp/sync-messages/:empresa_id', authenticateToken, async (req, res) => {
+    try {
+        const { empresa_id } = req.params;
+        const { limit = 50 } = req.body;
+        const empresaId = parseInt(empresa_id);
+
+        const empresa = await getEmpresaById(empresaId);
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        if (empresa.whatsapp_status !== 'ready') {
+            return res.status(503).json({ 
+                success: false,
+                error: 'WhatsApp não está conectado',
+                current_status: empresa.whatsapp_status
+            });
+        }
+
+        const client = whatsappInstances.get(empresaId);
+        if (!client) {
+            return res.status(503).json({ 
+                success: false,
+                error: 'WhatsApp não inicializado para esta empresa' 
+            });
+        }
+
+        console.log(`[WA-${empresaId}] 🔄 Sincronizando mensagens...`);
+
+        // Buscar chats recentes
+        const chats = await client.getChats();
+        let totalMessages = 0;
+        let syncedConversations = 0;
+
+        // Sincronizar últimos chats
+        for (const chat of chats.slice(0, limit)) {
+            try {
+                console.log(`[WA-${empresaId}] 💬 Sincronizando chat: ${chat.name || chat.id.user}`);
+                
+                // Buscar mensagens do chat
+                const messages = await chat.fetchMessages({ limit: 100 });
+                
+                for (const msg of messages) {
+                    // Ignorar mensagens de broadcast/newsletter
+                    if (msg.from.includes('newsletter') || msg.from.includes('status') || msg.from.includes('broadcast')) {
+                        continue;
+                    }
+
+                    const messageContent = msg.body || getDefaultMessageContent(msg.type);
+                    
+                    await saveMessageToDatabase({
+                        empresa_id: empresaId,
+                        phone_number: msg.fromMe ? msg.to : msg.from,
+                        message_type: msg.type,
+                        content: messageContent,
+                        is_from_me: msg.fromMe,
+                        timestamp: new Date(msg.timestamp * 1000) // Converter timestamp do WhatsApp
+                    });
+                    
+                    totalMessages++;
+                }
+                
+                syncedConversations++;
+                
+            } catch (chatError) {
+                console.error(`[WA-${empresaId}] ❌ Erro ao sincronizar chat:`, chatError.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            empresa_id: empresaId,
+            message: 'Mensagens sincronizadas com sucesso',
+            stats: {
+                conversations_synced: syncedConversations,
+                messages_synced: totalMessages,
+                total_conversations: chats.length
+            },
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('[SYNC] Erro ao sincronizar mensagens:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro ao sincronizar mensagens: ' + error.message 
         });
     }
 });
