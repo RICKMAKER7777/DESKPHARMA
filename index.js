@@ -1,4 +1,4 @@
-// index.js - Versão 7.2 (Completa com todas as rotas + melhorias Render)
+// index.js - Versão 7.3 (Correção QR Code no Render)
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -29,7 +29,23 @@ const QR_PATH = IS_RENDER ? '/tmp' : './qrs';
 
 // Criar pastas necessárias
 for (const dir of [path.dirname(DB_PATH), SESSIONS_PATH, QR_PATH]) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`[SYSTEM] ✅ Diretório criado: ${dir}`);
+    } catch (err) {
+      console.log(`[SYSTEM] ❌ Erro ao criar diretório ${dir}:`, err.message);
+    }
+  }
+}
+
+// Verificar permissões de escrita
+try {
+  fs.writeFileSync(path.join(QR_PATH, 'test.txt'), 'test');
+  fs.unlinkSync(path.join(QR_PATH, 'test.txt'));
+  console.log('[SYSTEM] ✅ Permissões de escrita OK em', QR_PATH);
+} catch (err) {
+  console.log('[SYSTEM] ❌ Sem permissão de escrita em', QR_PATH, err.message);
 }
 
 app.use(cors({ origin: ORIGIN === '*' ? true : ORIGIN, credentials: true }));
@@ -101,24 +117,6 @@ async function createTables() {
       is_from_me BOOLEAN DEFAULT 0,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
-  await dbExec(`
-    CREATE TABLE IF NOT EXISTS contacts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      empresa_id INTEGER NOT NULL,
-      name TEXT,
-      phone_number TEXT UNIQUE,
-      email TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-  await dbExec(`
-    CREATE TABLE IF NOT EXISTS message_templates (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      empresa_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      content TEXT NOT NULL,
-      category TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
   
   const count = await dbGet('SELECT COUNT(*) as c FROM empresas');
   if (count.c === 0) {
@@ -126,12 +124,6 @@ async function createTables() {
     await dbRun(`INSERT INTO empresas (cnpj,nome,telefone,email) VALUES 
       ('12345678000195','Farmácia Central','+5511999999999','contato@farmaciacentral.com.br'),
       ('98765432000187','Drogaria Popular','+5511888888888','vendas@drogariapopular.com.br')`);
-    
-    // Inserir templates padrão
-    await dbRun(`INSERT INTO message_templates (empresa_id, name, content, category) VALUES 
-      (1, 'Boas Vindas', 'Olá! Bem-vindo à Farmácia Central! Como podemos ajudar?', 'saudacao'),
-      (1, 'Promoção', 'Olá! Temos promoções especiais esta semana. Gostaria de conhecer?', 'promocao'),
-      (2, 'Boas Vindas', 'Olá! Bem-vindo à Drogaria Popular! Em que podemos ajudar?', 'saudacao')`);
   }
   console.log('[DATABASE] ✅ Todas as tabelas criadas/verificadas');
 }
@@ -183,11 +175,15 @@ function startConnectionHeartbeat(empresaId, client) {
 
 async function clearProblematicSession(empresaId) {
   const p = path.join(SESSIONS_PATH, `empresa_${empresaId}`);
-  if (fs.existsSync(p)) fs.rmSync(p, { recursive: true, force: true });
+  if (fs.existsSync(p)) {
+    console.log(`[WA-${empresaId}] 🗑️ Limpando sessão problemática`);
+    fs.rmSync(p, { recursive: true, force: true });
+  }
 }
 
 function createWhatsAppInstance(empresaId) {
-  console.log(`[WA-${empresaId}] 🚀 Criando instância`);
+  console.log(`[WA-${empresaId}] 🚀 Criando instância WhatsApp`);
+  
   const client = new Client({
     authStrategy: new LocalAuth({
       clientId: `empresa_${empresaId}`,
@@ -195,50 +191,100 @@ function createWhatsAppInstance(empresaId) {
     }),
     puppeteer: {
       headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
       args: [
-        '--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
-        '--single-process', '--no-zygote', '--disable-extensions', '--mute-audio',
-        '--disable-sync', '--no-first-run', '--no-default-browser-check'
-      ]
+        '--no-sandbox', 
+        '--disable-setuid-sandbox', 
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--single-process'
+      ],
+      timeout: 60000
     },
-    qrMaxRetries: 1,
-    multiDevice: true,
+    qrMaxRetries: 3,
+    restartOnAuthFail: true,
+    takeoverOnConflict: true,
+    takeoverTimeoutMs: 30000,
   });
 
   let isReady = false;
+  let qrGenerated = false;
 
   client.on('qr', async (qr) => {
-    const file = path.join(QR_PATH, `qr_${empresaId}.png`);
-    await QRCode.toFile(file, qr);
-    const url = `https://teste-deploy-rjuf.onrender.com/qr/${empresaId}`;
-    console.log(`[WA-${empresaId}] 🔄 QR Code gerado: ${url}`);
-    await updateWhatsAppStatus(empresaId, 'qr_code', url, null);
+    console.log(`[WA-${empresaId}] 🔄 QR Code recebido`);
+    try {
+      const file = path.join(QR_PATH, `qr_${empresaId}.png`);
+      await QRCode.toFile(file, qr);
+      console.log(`[WA-${empresaId}] ✅ QR Code salvo em: ${file}`);
+      
+      const url = `https://teste-deploy-rjuf.onrender.com/qr/${empresaId}`;
+      console.log(`[WA-${empresaId}] 🌐 QR Code URL: ${url}`);
+      
+      await updateWhatsAppStatus(empresaId, 'qr_code', url, null);
+      qrGenerated = true;
+      
+    } catch (error) {
+      console.log(`[WA-${empresaId}] ❌ Erro ao gerar QR Code:`, error.message);
+      await updateWhatsAppStatus(empresaId, 'error', null, `QR Error: ${error.message}`);
+    }
   });
 
   client.on('ready', async () => {
-    console.log(`[WA-${empresaId}] ✅ WhatsApp pronto`);
+    console.log(`[WA-${empresaId}] ✅ WhatsApp conectado e pronto`);
     isReady = true;
     await updateWhatsAppStatus(empresaId, 'ready', null, null);
     startConnectionHeartbeat(empresaId, client);
+    
+    // Limpar QR Code após conexão bem-sucedida
+    const qrFile = path.join(QR_PATH, `qr_${empresaId}.png`);
+    if (fs.existsSync(qrFile)) {
+      fs.unlinkSync(qrFile);
+    }
   });
 
-  client.on('disconnected', async (r) => {
-    console.log(`[WA-${empresaId}] 🔌 Desconectado: ${r}`);
-    await updateWhatsAppStatus(empresaId, 'disconnected', null, r);
+  client.on('authenticated', () => {
+    console.log(`[WA-${empresaId}] 🔑 Autenticado`);
+  });
+
+  client.on('auth_failure', async (msg) => {
+    console.log(`[WA-${empresaId}] ❌ Falha na autenticação:`, msg);
+    await updateWhatsAppStatus(empresaId, 'error', null, `Auth Failed: ${msg}`);
+  });
+
+  client.on('disconnected', async (reason) => {
+    console.log(`[WA-${empresaId}] 🔌 Desconectado:`, reason);
+    await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
+    
+    if (connectionHeartbeats.has(empresaId)) {
+      clearInterval(connectionHeartbeats.get(empresaId));
+      connectionHeartbeats.delete(empresaId);
+    }
+    
     if (isReady) {
-      setTimeout(() => client.initialize(), 10000);
+      console.log(`[WA-${empresaId}] 🔄 Tentando reconectar em 10s...`);
+      setTimeout(() => {
+        try {
+          client.initialize();
+        } catch (e) {
+          console.log(`[WA-${empresaId}] ❌ Erro na reconexão:`, e.message);
+        }
+      }, 10000);
     }
   });
 
   client.on('message', async (msg) => {
-    if (msg.from.includes('status') || msg.from.includes('newsletter')) return;
-    console.log(`[WA-${empresaId}] 📩 Mensagem: ${msg.body}`);
+    if (msg.from.includes('status') || msg.from.includes('broadcast') || msg.from.includes('newsletter')) return;
+    
+    console.log(`[WA-${empresaId}] 📩 Mensagem de ${msg.from}: ${msg.body?.substring(0, 50)}...`);
+    
     await saveMessageToDatabase({
       empresa_id: empresaId,
       phone_number: msg.fromMe ? msg.to : msg.from,
       message_type: msg.type,
-      content: msg.body || '[mídia]',
+      content: msg.body || `[${msg.type}]`,
       is_from_me: msg.fromMe
     });
   });
@@ -247,134 +293,114 @@ function createWhatsAppInstance(empresaId) {
 }
 
 async function initializeWhatsAppForEmpresa(empresaId) {
-  const client = createWhatsAppInstance(empresaId);
-  whatsappInstances.set(empresaId, client);
-  await clearProblematicSession(empresaId);
-  await client.initialize();
-  console.log(`[WA-${empresaId}] 📱 Instância inicializada`);
-  return true;
+  try {
+    console.log(`[WA-${empresaId}] 🚀 Iniciando inicialização...`);
+    
+    // Verificar se empresa existe
+    const empresa = await dbGet('SELECT * FROM empresas WHERE id = ?', [empresaId]);
+    if (!empresa) {
+      throw new Error(`Empresa ${empresaId} não encontrada`);
+    }
+
+    // Limpar sessão problemática se existir
+    await clearProblematicSession(empresaId);
+
+    // Criar e configurar cliente
+    const client = createWhatsAppInstance(empresaId);
+    whatsappInstances.set(empresaId, client);
+
+    // Atualizar status para inicializando
+    await updateWhatsAppStatus(empresaId, 'initializing', null, null);
+
+    // Inicializar com timeout
+    const initializationPromise = client.initialize();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout na inicialização (60s)')), 60000)
+    );
+
+    await Promise.race([initializationPromise, timeoutPromise]);
+    
+    console.log(`[WA-${empresaId}] ✅ Instância inicializada com sucesso`);
+    return true;
+
+  } catch (error) {
+    console.log(`[WA-${empresaId}] ❌ Erro na inicialização:`, error.message);
+    await updateWhatsAppStatus(empresaId, 'error', null, error.message);
+    
+    // Limpar instância em caso de erro
+    if (whatsappInstances.has(empresaId)) {
+      whatsappInstances.delete(empresaId);
+    }
+    
+    throw error;
+  }
 }
 
-// ====== ROTAS COMPLETAS ======
-
-// Rota principal
+// ====== ROTAS ======
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    version: '7.2',
+    version: '7.3',
     environment: 'render',
+    message: 'Sistema DeskPharma Online - QR Code Fix Aplicado',
     endpoints: {
-      qr: '/qr/:empresa_id',
-      health: '/health',
       status: '/status',
-      terminal: '/terminal/last',
-      empresas: '/empresas',
-      messages: '/messages/:empresa_id',
-      contacts: '/contacts/:empresa_id',
-      templates: '/templates/:empresa_id',
+      qr: '/qr/:empresa_id', 
       initialize: '/whatsapp/initialize/:empresa_id',
-      send: '/whatsapp/send/:empresa_id',
-      disconnect: '/whatsapp/disconnect/:empresa_id'
+      send: '/whatsapp/send/:empresa_id'
     }
   });
 });
 
-// QR Code
 app.get('/qr/:empresa_id', (req, res) => {
   const file = path.join(QR_PATH, `qr_${req.params.empresa_id}.png`);
-  if (fs.existsSync(file)) res.sendFile(file);
-  else res.status(404).send('QR Code não encontrado');
+  console.log(`[QR] Buscando arquivo: ${file}`);
+  
+  if (fs.existsSync(file)) {
+    res.sendFile(file);
+  } else {
+    res.status(404).json({ 
+      success: false, 
+      error: 'QR Code não encontrado',
+      tip: 'A instância pode ainda estar inicializando ou ter falhado'
+    });
+  }
 });
 
-// Health Check
 app.get('/health', (req, res) => {
   res.json({ 
     success: true, 
     status: 'online', 
     environment: 'render',
     timestamp: new Date().toISOString(),
-    memory: process.memoryUsage(),
-    uptime: process.uptime()
+    qr_path: QR_PATH,
+    sessions_path: SESSIONS_PATH
   });
 });
 
-// Status completo
 app.get('/status', async (req, res) => {
-  const empresas = await dbAll('SELECT * FROM empresas');
-  res.json({
-    success: true,
-    empresas,
-    whatsapp_instances: whatsappInstances.size,
-    heartbeats: connectionHeartbeats.size,
-    system: {
-      platform: process.platform,
-      node_version: process.version,
-      memory: process.memoryUsage(),
-      uptime: process.uptime()
-    }
-  });
-});
-
-// Última linha do terminal (NOVA ROTA)
-app.get('/terminal/last', authenticateToken, async (req, res) => {
-  try {
-    const execPromise = util.promisify(exec);
-    
-    // Comando para pegar últimas linhas do log do sistema (ajuste conforme necessário)
-    const { stdout } = await execPromise('tail -n 50 /var/log/syslog 2>/dev/null || tail -n 50 /var/log/messages 2>/dev/null || echo "Logs do sistema não disponíveis"');
-    
-    // Alternativa: último comando do histórico (se disponível)
-    const { stdout: history } = await execPromise('tail -n 10 ~/.bash_history 2>/dev/null || echo "Histórico não disponível"');
-    
-    res.json({
-      success: true,
-      system_logs: stdout.split('\n').filter(line => line.trim()),
-      command_history: history.split('\n').filter(line => line.trim()),
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.json({
-      success: true,
-      system_logs: [`Erro ao acessar logs: ${error.message}`],
-      command_history: ['Histórico não disponível neste ambiente'],
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Empresas
-app.get('/empresas', authenticateToken, async (req, res) => {
   try {
     const empresas = await dbAll('SELECT * FROM empresas ORDER BY id');
-    res.json({ success: true, empresas });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+    
+    // Verificar arquivos de QR existentes
+    const qrFiles = {};
+    empresas.forEach(empresa => {
+      const qrFile = path.join(QR_PATH, `qr_${empresa.id}.png`);
+      qrFiles[empresa.id] = fs.existsSync(qrFile);
+    });
 
-// Mensagens por empresa
-app.get('/messages/:empresa_id', authenticateToken, async (req, res) => {
-  try {
-    const { empresa_id } = req.params;
-    const { limit = 100, offset = 0 } = req.query;
-    
-    const messages = await dbAll(
-      `SELECT * FROM messages WHERE empresa_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
-      [empresa_id, parseInt(limit), parseInt(offset)]
-    );
-    
-    const total = await dbGet(
-      `SELECT COUNT(*) as count FROM messages WHERE empresa_id = ?`,
-      [empresa_id]
-    );
-    
-    res.json({ 
-      success: true, 
-      messages,
-      pagination: {
-        total: total.count,
-        limit: parseInt(limit),
-        offset: parseInt(offset)
+    res.json({
+      success: true,
+      empresas,
+      whatsapp_instances: whatsappInstances.size,
+      heartbeats: connectionHeartbeats.size,
+      qr_files: qrFiles,
+      system: {
+        platform: process.platform,
+        node_version: process.version,
+        memory: process.memoryUsage(),
+        uptime: process.uptime(),
+        qr_path: QR_PATH
       }
     });
   } catch (error) {
@@ -382,88 +408,47 @@ app.get('/messages/:empresa_id', authenticateToken, async (req, res) => {
   }
 });
 
-// Contatos por empresa
-app.get('/contacts/:empresa_id', authenticateToken, async (req, res) => {
-  try {
-    const { empresa_id } = req.params;
-    const contacts = await dbAll(
-      `SELECT * FROM contacts WHERE empresa_id = ? ORDER BY name`,
-      [empresa_id]
-    );
-    res.json({ success: true, contacts });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Adicionar contato
-app.post('/contacts/:empresa_id', authenticateToken, async (req, res) => {
-  try {
-    const { empresa_id } = req.params;
-    const { name, phone_number, email } = req.body;
-    
-    await dbRun(
-      `INSERT INTO contacts (empresa_id, name, phone_number, email) VALUES (?, ?, ?, ?)`,
-      [empresa_id, name, phone_number, email]
-    );
-    
-    res.json({ success: true, message: 'Contato adicionado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Templates por empresa
-app.get('/templates/:empresa_id', authenticateToken, async (req, res) => {
-  try {
-    const { empresa_id } = req.params;
-    const templates = await dbAll(
-      `SELECT * FROM message_templates WHERE empresa_id = ? ORDER BY name`,
-      [empresa_id]
-    );
-    res.json({ success: true, templates });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Adicionar template
-app.post('/templates/:empresa_id', authenticateToken, async (req, res) => {
-  try {
-    const { empresa_id } = req.params;
-    const { name, content, category } = req.body;
-    
-    await dbRun(
-      `INSERT INTO message_templates (empresa_id, name, content, category) VALUES (?, ?, ?, ?)`,
-      [empresa_id, name, content, category]
-    );
-    
-    res.json({ success: true, message: 'Template adicionado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Inicializar WhatsApp
 app.post('/whatsapp/initialize/:empresa_id', authenticateToken, async (req, res) => {
   const id = parseInt(req.params.empresa_id);
+  
   try {
+    console.log(`[API] Inicializando WhatsApp para empresa ${id}`);
     await initializeWhatsAppForEmpresa(id);
-    res.json({ success: true, message: 'Inicializado', empresa_id: id });
-  } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    
+    res.json({ 
+      success: true, 
+      message: 'WhatsApp inicializando...',
+      empresa_id: id,
+      qr_url: `https://teste-deploy-rjuf.onrender.com/qr/${id}`,
+      note: 'Acesse a URL do QR Code em 10-30 segundos'
+    });
+    
+  } catch (error) {
+    console.log(`[API] Erro ao inicializar empresa ${id}:`, error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      empresa_id: id 
+    });
   }
 });
 
-// Enviar mensagem
 app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
   const id = parseInt(req.params.empresa_id);
   const { to, message } = req.body;
+  
   const client = whatsappInstances.get(id);
-  if (!client) return res.status(503).json({ success: false, error: 'Instância não ativa' });
+  if (!client) {
+    return res.status(503).json({ 
+      success: false, 
+      error: 'Instância WhatsApp não ativa. Inicialize primeiro.' 
+    });
+  }
   
   try {
     const chatId = normalizeNumber(to);
+    console.log(`[WA-${id}] 📤 Enviando mensagem para: ${chatId}`);
+    
     await client.sendMessage(chatId, message);
     await saveMessageToDatabase({ 
       empresa_id: id, 
@@ -472,38 +457,19 @@ app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
       content: message, 
       is_from_me: true 
     });
-    res.json({ success: true, to: chatId, message: 'Enviado com sucesso' });
+    
+    res.json({ 
+      success: true, 
+      to: chatId, 
+      message: 'Mensagem enviada com sucesso' 
+    });
+    
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Desconectar WhatsApp
-app.post('/whatsapp/disconnect/:empresa_id', authenticateToken, async (req, res) => {
-  const id = parseInt(req.params.empresa_id);
-  const client = whatsappInstances.get(id);
-  
-  if (!client) {
-    return res.status(404).json({ success: false, error: 'Instância não encontrada' });
-  }
-  
-  try {
-    // Parar heartbeat
-    if (connectionHeartbeats.has(id)) {
-      clearInterval(connectionHeartbeats.get(id));
-      connectionHeartbeats.delete(id);
-    }
-    
-    // Desconectar cliente
-    await client.destroy();
-    whatsappInstances.delete(id);
-    
-    // Atualizar status
-    await updateWhatsAppStatus(id, 'disconnected', null, 'Desconectado manualmente');
-    
-    res.json({ success: true, message: 'WhatsApp desconectado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.log(`[WA-${id}] ❌ Erro ao enviar mensagem:`, error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
   }
 });
 
@@ -513,9 +479,20 @@ async function startServer() {
   server.listen(PORT, () => {
     console.log(`✅ API rodando na porta ${PORT}`);
     console.log('🌍 Ambiente: Render');
-    console.log('📱 Versão: 7.2 - Completa com todas as rotas');
-    console.log('🔗 Terminal logs: https://teste-deploy-rjuf.onrender.com/terminal/last');
+    console.log('📱 Versão: 7.3 - QR Code Fix');
+    console.log('📁 QR Path:', QR_PATH);
+    console.log('📁 Sessions Path:', SESSIONS_PATH);
+    console.log('🔗 Status: https://teste-deploy-rjuf.onrender.com/status');
   });
 }
+
+// Tratamento de erros não capturados
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.log('❌ Uncaught Exception:', error);
+});
 
 startServer().catch(console.error);
