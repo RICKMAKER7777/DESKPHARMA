@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeskPharma - Sistema de Gestão</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-	<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
     <style>
         :root {
             --primary: #2D9CDB;
@@ -738,112 +738,224 @@
         .logout-btn:hover {
             text-decoration: underline;
         }
-		
-		/* Estilos WhatsApp */
-		.chat-messages {
-			background: #e5ddd5;
-			background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%239C92AC' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
-		}
+        
+        /* Estilos WhatsApp */
+        .chat-messages {
+            background: #e5ddd5;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%239C92AC' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
 
-		.message {
-			max-width: 70%;
-			margin-bottom: 10px;
-			padding: 8px 12px;
-			border-radius: 7.5px;
-			position: relative;
-			word-wrap: break-word;
-			box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-		}
+        .message {
+            max-width: 70%;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 7.5px;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+        }
 
-		.message.incoming {
-			background: white;
-			align-self: flex-start;
-			border-bottom-left-radius: 0;
-			margin-right: auto;
-		}
+        .message.incoming {
+            background: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+            margin-right: auto;
+        }
 
-		.message.outgoing {
-			background: #dcf8c6;
-			align-self: flex-end;
-			border-bottom-right-radius: 0;
-			margin-left: auto;
-		}
+        .message.outgoing {
+            background: #dcf8c6;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+            margin-left: auto;
+        }
 
-		.message-content {
-			margin-bottom: 4px;
-			line-height: 1.4;
-		}
+        .message-content {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
 
-		.message-time {
-			font-size: 0.7rem;
-			color: #999;
-			text-align: right;
-			margin-top: 2px;
-		}
+        .message-time {
+            font-size: 0.7rem;
+            color: #999;
+            text-align: right;
+            margin-top: 2px;
+        }
 
-		.chat-messages {
-			display: flex;
-			flex-direction: column;
-			padding: 10px;
-			gap: 8px;
-		}
+        .message-attendant {
+            font-size: 0.7rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 2px;
+        }
 
-		.conversation-item {
-			padding: 12px;
-			border-bottom: 1px solid #eee;
-			cursor: pointer;
-			transition: background-color 0.2s;
-		}
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 8px;
+        }
 
-		.conversation-item:hover {
-			background-color: #f8f9fa;
-		}
+        .conversation-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
 
-		.conversation-item.active {
-			background-color: #e3f2fd;
-			border-left: 3px solid var(--primary);
-		}
+        .conversation-item:hover {
+            background-color: #f8f9fa;
+        }
 
-		.conversation-name {
-			font-weight: 600;
-			margin-bottom: 4px;
-		}
+        .conversation-item.active {
+            background-color: #e3f2fd;
+            border-left: 3px solid var(--primary);
+        }
 
-		.conversation-preview {
-			font-size: 0.85rem;
-			color: #666;
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
+        .conversation-item.priority-medium {
+            background-color: rgba(242, 201, 76, 0.1);
+            border-left: 3px solid var(--warning);
+        }
 
-		.conversation-time {
-			font-size: 0.75rem;
-			color: #999;
-		}
+        .conversation-item.priority-high {
+            background-color: rgba(235, 87, 87, 0.1);
+            border-left: 3px solid var(--danger);
+        }
 
-		.file-preview {
-			background: #f8f9fa;
-			border: 1px solid #dee2e6;
-			border-radius: 5px;
-			padding: 10px;
-			margin-bottom: 10px;
-		}
+        .conversation-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
 
-		.file-preview img, .file-preview audio, .file-preview video {
-			max-width: 100%;
-			border-radius: 5px;
-		}
+        .conversation-preview {
+            font-size: 0.85rem;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
-		.audio-transcript {
-			background: #e3f2fd;
-			border-left: 3px solid var(--primary);
-			padding: 8px 12px;
-			margin-top: 5px;
-			border-radius: 0 5px 5px 0;
-			font-size: 0.9rem;
-		}
+        .conversation-time {
+            font-size: 0.75rem;
+            color: #999;
+        }
 
+        .file-preview {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .file-preview img, .file-preview audio, .file-preview video {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+
+        .audio-transcript {
+            background: #e3f2fd;
+            border-left: 3px solid var(--primary);
+            padding: 8px 12px;
+            margin-top: 5px;
+            border-radius: 0 5px 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .filter-btn {
+            padding: 5px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-btn.priority-medium.active {
+            background: var(--warning);
+            border-color: var(--warning);
+        }
+
+        .filter-btn.priority-high.active {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .contact-details-modal .modal {
+            max-width: 500px;
+        }
+
+        .contact-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 15px;
+            display: block;
+        }
+
+        .qr-terminal {
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .qr-terminal .line {
+            margin-bottom: 5px;
+        }
+
+        .qr-terminal .timestamp {
+            color: #aaa;
+            margin-right: 10px;
+        }
+
+        .qr-terminal .info {
+            color: #4CAF50;
+        }
+
+        .qr-terminal .warning {
+            color: #FFC107;
+        }
+
+        .qr-terminal .error {
+            color: #F44336;
+        }
+
+        .login-error {
+            color: var(--danger);
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -872,13 +984,16 @@
                     <label for="password">Senha</label>
                     <input type="password" id="password" class="form-control" placeholder="Sua senha" value="123456">
                 </div>
+
+                <div class="login-error" id="loginError" style="display: none;"></div>
                 
                 <button class="btn btn-primary" style="width: 100%" id="loginBtn">
                     <i class="fas fa-sign-in-alt"></i> Entrar
                 </button>
                 
                 <div class="form-footer">
-                    <a href="#" id="forgotPassword">Esqueci minha senha</a>
+                    <a href="#" id="forgotPassword">Esqueci minha senha</a> | 
+                    <a href="#" id="showRegister">Cadastrar</a>
                 </div>
             </div>
         </div>
@@ -908,7 +1023,7 @@
                     <div class="menu-item" data-page="approvals">
                         <i class="fas fa-clipboard-check"></i>
                         <span>Aprovações Pendentes</span>
-                        <span class="badge badge-danger">3</span>
+                        <span class="badge badge-danger" id="pendingApprovalsCount">0</span>
                     </div>
                     
                     <div class="menu-item" data-page="goals">
@@ -919,13 +1034,13 @@
                     <div class="menu-item" data-page="deliveries">
                         <i class="fas fa-motorcycle"></i>
                         <span>Entregas</span>
-                        <span class="badge badge-warning">5</span>
+                        <span class="badge badge-warning" id="pendingDeliveriesCount">0</span>
                     </div>
                     
                     <div class="menu-item" data-page="messages">
                         <i class="fas fa-comments"></i>
                         <span>Mensagens</span>
-                        <span class="badge badge-primary">12</span>
+                        <span class="badge badge-primary" id="unreadMessagesCount">0</span>
                     </div>
                     
                     <div class="menu-item" data-page="inventory">
@@ -963,10 +1078,10 @@
                         </button>
                         
                         <div class="user-info">
-                            <div class="user-avatar">SM</div>
+                            <div class="user-avatar" id="userAvatar">SM</div>
                             <div>
-                                <div>Supervisor Master</div>
-                                <small>Supervisor</small>
+                                <div id="userName">Supervisor Master</div>
+                                <small id="userRole">Supervisor</small>
                                 <button class="logout-btn" id="logoutBtn">
                                     <i class="fas fa-sign-out-alt"></i> Sair
                                 </button>
@@ -989,8 +1104,8 @@
                                         <i class="fas fa-shopping-cart"></i>
                                     </div>
                                 </div>
-                                <div class="stat-value">R$ 3.458,90</div>
-                                <div class="stat-label">+12% em relação a ontem</div>
+                                <div class="stat-value" id="salesToday">R$ 0,00</div>
+                                <div class="stat-label" id="salesComparison">Carregando...</div>
                             </div>
                             
                             <div class="stat-card">
@@ -1000,8 +1115,8 @@
                                         <i class="fas fa-motorcycle"></i>
                                     </div>
                                 </div>
-                                <div class="stat-value">24/30</div>
-                                <div class="stat-label">5 entregas pendentes</div>
+                                <div class="stat-value" id="deliveriesCount">0/0</div>
+                                <div class="stat-label" id="deliveriesPending">Carregando...</div>
                             </div>
                             
                             <div class="stat-card">
@@ -1011,8 +1126,8 @@
                                         <i class="fas fa-headset"></i>
                                     </div>
                                 </div>
-                                <div class="stat-value">56</div>
-                                <div class="stat-label">8 em andamento</div>
+                                <div class="stat-value" id="servicesCount">0</div>
+                                <div class="stat-label" id="servicesInProgress">Carregando...</div>
                             </div>
                             
                             <div class="stat-card">
@@ -1022,8 +1137,8 @@
                                         <i class="fas fa-bullseye"></i>
                                     </div>
                                 </div>
-                                <div class="stat-value">78%</div>
-                                <div class="stat-label">Faltam 12 dias</div>
+                                <div class="stat-value" id="goalProgress">0%</div>
+                                <div class="stat-label" id="goalDaysLeft">Carregando...</div>
                             </div>
                         </div>
                         
@@ -1031,7 +1146,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <h3><i class="fas fa-clipboard-check"></i> Aprovações Pendentes</h3>
-                                <button class="btn btn-primary btn-sm">Ver Todas</button>
+                                <a href="#" class="btn btn-sm btn-primary" id="viewAllApprovals">Ver Todas</a>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -1041,40 +1156,13 @@
                                                 <th>Funcionário</th>
                                                 <th>Tipo</th>
                                                 <th>Data</th>
-                                                <th>Status</th>
+                                                <th>Valor</th>
                                                 <th>Ações</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="pendingApprovalsTable">
                                             <tr>
-                                                <td>Carlos Silva</td>
-                                                <td>Cadastro</td>
-                                                <td>12/05/2023</td>
-                                                <td><span class="badge badge-warning">Pendente</span></td>
-                                                <td>
-                                                    <button class="btn btn-success btn-sm">Aprovar</button>
-                                                    <button class="btn btn-danger btn-sm">Recusar</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Ana Santos</td>
-                                                <td>Pontos</td>
-                                                <td>11/05/2023</td>
-                                                <td><span class="badge badge-warning">Pendente</span></td>
-                                                <td>
-                                                    <button class="btn btn-success btn-sm">Aprovar</button>
-                                                    <button class="btn btn-danger btn-sm">Recusar</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Pedro Almeida</td>
-                                                <td>Saída Antecipada</td>
-                                                <td>10/05/2023</td>
-                                                <td><span class="badge badge-warning">Pendente</span></td>
-                                                <td>
-                                                    <button class="btn btn-success btn-sm">Aprovar</button>
-                                                    <button class="btn btn-danger btn-sm">Recusar</button>
-                                                </td>
+                                                <td colspan="5" class="text-center">Carregando aprovações...</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1082,45 +1170,27 @@
                             </div>
                         </div>
                         
-                        <!-- Entregas Recentes -->
+                        <!-- Entregas Pendentes -->
                         <div class="card">
                             <div class="card-header">
-                                <h3><i class="fas fa-motorcycle"></i> Entregas Recentes</h3>
-                                <button class="btn btn-primary btn-sm">Ver Todas</button>
+                                <h3><i class="fas fa-motorcycle"></i> Entregas Pendentes</h3>
+                                <a href="#" class="btn btn-sm btn-primary" id="viewAllDeliveries">Ver Todas</a>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th>Pedido</th>
                                                 <th>Cliente</th>
-                                                <th>Entregador</th>
+                                                <th>Endereço</th>
+                                                <th>Horário</th>
                                                 <th>Status</th>
-                                                <th>Valor</th>
+                                                <th>Ações</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="pendingDeliveriesTable">
                                             <tr>
-                                                <td>#12345</td>
-                                                <td>Maria Oliveira</td>
-                                                <td>João Motoboy</td>
-                                                <td><span class="badge badge-success">Entregue</span></td>
-                                                <td>R$ 87,50</td>
-                                            </tr>
-                                            <tr>
-                                                <td>#12346</td>
-                                                <td>José Santos</td>
-                                                <td>Carlos Entregas</td>
-                                                <td><span class="badge badge-warning">Em rota</span></td>
-                                                <td>R$ 125,90</td>
-                                            </tr>
-                                            <tr>
-                                                <td>#12347</td>
-                                                <td>Ana Costa</td>
-                                                <td>Antônio Delivery</td>
-                                                <td><span class="badge badge-danger">Pendente</span></td>
-                                                <td>R$ 64,30</td>
+                                                <td colspan="5" class="text-center">Carregando entregas...</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1128,358 +1198,151 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Funcionários -->
+                    
+                    <!-- Mensagens -->
+                    <div class="page-content" id="page-messages">
+                        <h2 class="mb-3">Mensagens</h2>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-comments"></i> Conversas</h3>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-sm btn-success mr-2" id="qrCodeBtn">
+                                        <i class="fas fa-qrcode"></i> QR Code
+                                    </button>
+                                    <button class="btn btn-sm btn-primary" id="refreshConversations">
+                                        <i class="fas fa-sync-alt"></i> Atualizar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="filter-buttons">
+                                    <button class="filter-btn active" data-filter="all">Todas</button>
+                                    <button class="filter-btn priority-medium" data-filter="medium">Aguardando >5min</button>
+                                    <button class="filter-btn priority-high" data-filter="high">Aguardando >10min</button>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="conversations-list" id="conversationsList" style="max-height: 600px; overflow-y: auto;">
+                                            <!-- Lista de conversas será carregada aqui -->
+                                            <div class="text-center p-3">
+                                                <i class="fas fa-spinner fa-spin"></i> Carregando conversas...
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="chat-container" id="chatContainer" style="display: none;">
+                                            <div class="card">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <div class="contact-info" id="currentContact">
+                                                        <!-- Informações do contato serão carregadas aqui -->
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-primary" id="contactDetailsBtn">
+                                                        <i class="fas fa-user-edit"></i> Editar
+                                                    </button>
+                                                </div>
+                                                <div class="card-body p-0">
+                                                    <div class="chat-messages" id="chatMessages" style="height: 400px; overflow-y: auto;">
+                                                        <!-- Mensagens da conversa serão carregadas aqui -->
+                                                    </div>
+                                                    <div class="p-3 border-top">
+                                                        <div class="input-group">
+                                                            <input type="text" class="form-control" id="messageInput" placeholder="Digite sua mensagem...">
+                                                            <div class="input-group-append">
+                                                                <button class="btn btn-outline-secondary" type="button" id="attachBtn">
+                                                                    <i class="fas fa-paperclip"></i>
+                                                                </button>
+                                                                <button class="btn btn-primary" type="button" id="sendMessageBtn">
+                                                                    <i class="fas fa-paper-plane"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div id="filePreview" class="mt-2"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-center p-5" id="noConversationSelected">
+                                            <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                                            <h4 class="text-muted">Selecione uma conversa</h4>
+                                            <p class="text-muted">Escolha uma conversa da lista para visualizar as mensagens</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Outras páginas -->
                     <div class="page-content" id="page-employees">
                         <h2 class="mb-3">Funcionários</h2>
                         <div class="card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-users"></i> Lista de Funcionários</h3>
-                                <button class="btn btn-primary btn-sm">Adicionar Funcionário</button>
-                            </div>
                             <div class="card-body">
-                                <div class="table-responsive">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Nome</th>
-                                                <th>Cargo</th>
-                                                <th>Departamento</th>
-                                                <th>Status</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Carlos Silva</td>
-                                                <td>Atendente</td>
-                                                <td>Vendas</td>
-                                                <td><span class="badge badge-success">Ativo</span></td>
-                                                <td>
-                                                    <button class="btn btn-primary btn-sm">Editar</button>
-                                                    <button class="btn btn-danger btn-sm">Desativar</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Ana Santos</td>
-                                                <td>Farmacêutico</td>
-                                                <td>Farmácia</td>
-                                                <td><span class="badge badge-success">Ativo</span></td>
-                                                <td>
-                                                    <button class="btn btn-primary btn-sm">Editar</button>
-                                                    <button class="btn btn-danger btn-sm">Desativar</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Pedro Almeida</td>
-                                                <td>Entregador</td>
-                                                <td>Logística</td>
-                                                <td><span class="badge badge-warning">Ausente</span></td>
-                                                <td>
-                                                    <button class="btn btn-primary btn-sm">Editar</button>
-                                                    <button class="btn btn-danger btn-sm">Desativar</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <p>Conteúdo da página de funcionários</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Aprovações -->
+                    
                     <div class="page-content" id="page-approvals">
                         <h2 class="mb-3">Aprovações Pendentes</h2>
                         <div class="card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-clipboard-check"></i> Solicitações para Aprovação</h3>
-                            </div>
                             <div class="card-body">
-                                <div class="table-responsive">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Funcionário</th>
-                                                <th>Tipo</th>
-                                                <th>Data</th>
-                                                <th>Detalhes</th>
-                                                <th>Status</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Carlos Silva</td>
-                                                <td>Cadastro</td>
-                                                <td>12/05/2023</td>
-                                                <td>Novo cadastro de funcionário</td>
-                                                <td><span class="badge badge-warning">Pendente</span></td>
-                                                <td>
-                                                    <button class="btn btn-success btn-sm">Aprovar</button>
-                                                    <button class="btn btn-danger btn-sm">Recusar</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Ana Santos</td>
-                                                <td>Pontos</td>
-                                                <td>11/05/2023</td>
-                                                <td>Ajuste de ponto - atraso justificado</td>
-                                                <td><span class="badge badge-warning">Pendente</span></td>
-                                                <td>
-                                                    <button class="btn btn-success btn-sm">Aprovar</button>
-                                                    <button class="btn btn-danger btn-sm">Recusar</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Pedro Almeida</td>
-                                                <td>Saída Antecipada</td>
-                                                <td>10/05/2023</td>
-                                                <td>Saída antecipada por motivo médico</td>
-                                                <td><span class="badge badge-warning">Pendente</span></td>
-                                                <td>
-                                                    <button class="btn btn-success btn-sm">Aprovar</button>
-                                                    <button class="btn btn-danger btn-sm">Recusar</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <p>Conteúdo da página de aprovações</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Metas -->
+                    
                     <div class="page-content" id="page-goals">
                         <h2 class="mb-3">Metas</h2>
                         <div class="card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-bullseye"></i> Metas do Mês</h3>
-                                <button class="btn btn-primary btn-sm">Definir Nova Meta</button>
-                            </div>
                             <div class="card-body">
-                                <div class="table-responsive">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Meta</th>
-                                                <th>Departamento</th>
-                                                <th>Progresso</th>
-                                                <th>Prazo</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Vendas Mensais</td>
-                                                <td>Vendas</td>
-                                                <td>
-                                                    <div style="background: #eee; border-radius: 5px; height: 10px; width: 100%;">
-                                                        <div style="background: var(--success); height: 10px; border-radius: 5px; width: 78%;"></div>
-                                                    </div>
-                                                    <small>78%</small>
-                                                </td>
-                                                <td>31/05/2023</td>
-                                                <td><span class="badge badge-success">No Prazo</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Entregas no Prazo</td>
-                                                <td>Logística</td>
-                                                <td>
-                                                    <div style="background: #eee; border-radius: 5px; height: 10px; width: 100%;">
-                                                        <div style="background: var(--warning); height: 10px; border-radius: 5px; width: 65%;"></div>
-                                                    </div>
-                                                    <small>65%</small>
-                                                </td>
-                                                <td>31/05/2023</td>
-                                                <td><span class="badge badge-warning">Atenção</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Atendimento ao Cliente</td>
-                                                <td>Atendimento</td>
-                                                <td>
-                                                    <div style="background: #eee; border-radius: 5px; height: 10px; width: 100%;">
-                                                        <div style="background: var(--danger); height: 10px; border-radius: 5px; width: 45%;"></div>
-                                                    </div>
-                                                    <small>45%</small>
-                                                </td>
-                                                <td>31/05/2023</td>
-                                                <td><span class="badge badge-danger">Atrasado</span></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <p>Conteúdo da página de metas</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Outras páginas teriam conteúdo similar -->
+                    
                     <div class="page-content" id="page-deliveries">
                         <h2 class="mb-3">Entregas</h2>
                         <div class="card">
                             <div class="card-body">
-                                <p>Conteúdo da página de entregas será implementado aqui.</p>
+                                <p>Conteúdo da página de entregas</p>
                             </div>
                         </div>
                     </div>
-
-                    <div class="page-content" id="page-messages">
-					<h2 class="mb-3">Mensagens WhatsApp</h2>
-					
-					<!-- Status e Controles -->
-					<div class="card mb-3">
-						<div class="card-header">
-							<h3><i class="fab fa-whatsapp" style="color: #25D366"></i> Status da Conexão</h3>
-						</div>
-						<div class="card-body">
-							<div class="d-flex justify-content-between align-items-center">
-								<div>
-									<span id="waStatusBadge" class="badge badge-danger">Desconectado</span>
-									<span id="waStatusDetail" class="text-muted ml-2">Aguardando conexão</span>
-								</div>
-								<div>
-									<button id="btnShowQR" class="btn btn-warning btn-sm">
-										<i class="fas fa-qrcode"></i> QR Code
-									</button>
-									<button id="btnReconnect" class="btn btn-primary btn-sm">
-										<i class="fas fa-sync-alt"></i> Reconectar
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="row">
-						<!-- Lista de Conversas -->
-						<div class="col-md-4">
-							<div class="card">
-								<div class="card-header">
-									<h3><i class="fas fa-comments"></i> Conversas</h3>
-								</div>
-								<div class="card-body p-0">
-									<div class="conversation-list" id="conversationList" style="max-height: 500px; overflow-y: auto;">
-										<!-- Conversas serão carregadas aqui -->
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<!-- Área de Chat -->
-						<div class="col-md-8">
-							<div class="card">
-								<div class="card-header">
-									<div class="d-flex justify-content-between align-items-center">
-										<h3 id="currentChatName">Selecione uma conversa</h3>
-										<div class="dropdown">
-											<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown">
-												<i class="fas fa-ellipsis-v"></i>
-											</button>
-											<div class="dropdown-menu">
-												<a class="dropdown-item" href="#" id="btnClearChat"><i class="fas fa-trash"></i> Limpar chat</a>
-												<a class="dropdown-item" href="#" id="btnExportChat"><i class="fas fa-download"></i> Exportar</a>
-											</div>
-										</div>
-									</div>
-								</div>
-								<div class="card-body p-0">
-									<!-- Área de Mensagens -->
-									<div class="chat-messages" id="chatMessages" style="height: 400px; overflow-y: auto; padding: 15px; background: #e5ddd5; background-image: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" opacity=\"0.05\"><path fill=\"%239C92AC\" d=\"M10 50a40 40 0 1 1 80 0 40 40 0 1 1-80 0\"/></svg>'); display: flex; flex-direction: column;">
-										<div class="text-center text-muted mt-5" id="emptyChatState">
-											<i class="fas fa-comments fa-3x mb-3"></i>
-											<p>Selecione uma conversa para começar</p>
-										</div>
-									</div>
-
-									<!-- Área de Envio -->
-									<div class="chat-input p-3 border-top">
-										<div class="input-group mb-2">
-											<input type="text" id="messageInput" class="form-control" placeholder="Digite sua mensagem..." disabled>
-											<div class="input-group-append">
-												<button class="btn btn-outline-secondary" type="button" id="btnAttach">
-													<i class="fas fa-paperclip"></i>
-												</button>
-												<button class="btn btn-primary" type="button" id="btnSendMessage" disabled>
-													<i class="fas fa-paper-plane"></i>
-												</button>
-											</div>
-										</div>
-										<div id="filePreview" class="mb-2" style="display: none;">
-											<!-- Pré-visualização de arquivos -->
-										</div>
-										<input type="file" id="fileInput" style="display: none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx">
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Modal QR Code -->
-				<div class="modal fade" id="qrModal" tabindex="-1">
-					<div class="modal-dialog">
-						<div class="modal-content">
-							<div class="modal-header">
-								<h5 class="modal-title">Escaneie o QR Code</h5>
-								<button type="button" class="close" data-dismiss="modal">
-									<span>&times;</span>
-								</button>
-							</div>
-							<div class="modal-body text-center">
-								<img id="qrImage" src="" alt="QR Code" class="img-fluid mb-3">
-								<p class="text-muted">Abra o WhatsApp no seu celular, toque em ⋮ → Dispositivos vinculados → Vincular um dispositivo</p>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Modal Pré-visualização -->
-				<div class="modal fade" id="previewModal" tabindex="-1">
-					<div class="modal-dialog modal-lg">
-						<div class="modal-content">
-							<div class="modal-header">
-								<h5 class="modal-title">Pré-visualização</h5>
-								<button type="button" class="close" data-dismiss="modal">
-									<span>&times;</span>
-								</button>
-							</div>
-							<div class="modal-body text-center" id="previewContent">
-								<!-- Conteúdo da pré-visualização -->
-							</div>
-						</div>
-					</div>
-				</div>
-
+                    
                     <div class="page-content" id="page-inventory">
                         <h2 class="mb-3">Estoque</h2>
                         <div class="card">
                             <div class="card-body">
-                                <p>Conteúdo da página de estoque será implementado aqui.</p>
+                                <p>Conteúdo da página de estoque</p>
                             </div>
                         </div>
                     </div>
-
+                    
                     <div class="page-content" id="page-reports">
                         <h2 class="mb-3">Relatórios</h2>
                         <div class="card">
                             <div class="card-body">
-                                <p>Conteúdo da página de relatórios será implementado aqui.</p>
+                                <p>Conteúdo da página de relatórios</p>
                             </div>
                         </div>
                     </div>
-
+                    
                     <div class="page-content" id="page-announcements">
                         <h2 class="mb-3">Avisos</h2>
                         <div class="card">
                             <div class="card-body">
-                                <p>Conteúdo da página de avisos será implementado aqui.</p>
+                                <p>Conteúdo da página de avisos</p>
                             </div>
                         </div>
                     </div>
-
+                    
                     <div class="page-content" id="page-settings">
                         <h2 class="mb-3">Configurações</h2>
                         <div class="card">
                             <div class="card-body">
-                                <p>Conteúdo da página de configurações será implementado aqui.</p>
+                                <p>Conteúdo da página de configurações</p>
                             </div>
                         </div>
                     </div>
@@ -1488,709 +1351,784 @@
         </div>
     </div>
 
+    <!-- Modal QR Code -->
+    <div class="modal-backdrop" id="qrCodeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-qrcode"></i> QR Code WhatsApp</h3>
+                <button class="modal-close" id="closeQrModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <p>Escaneie o QR Code abaixo com o WhatsApp para conectar</p>
+                    <div id="qrCodeImage">
+                        <!-- QR Code será carregado aqui -->
+                        <div class="text-center p-4">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p class="mt-2">Gerando QR Code...</p>
+                        </div>
+                    </div>
+                    <div class="qr-terminal" id="qrTerminal">
+                        <div class="line"><span class="timestamp">[12:30:45]</span> <span class="info">[WA-1]</span> Iniciando conexão WhatsApp...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="closeQrModalBtn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes do Contato -->
+    <div class="modal-backdrop" id="contactDetailsModal">
+        <div class="modal contact-details-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-edit"></i> Editar Contato</h3>
+                <button class="modal-close" id="closeContactModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <img src="" alt="Foto do contato" class="contact-avatar-large" id="contactAvatarLarge">
+                    <h4 id="contactPhoneDisplay">(00) 00000-0000</h4>
+                </div>
+                
+                <form id="contactForm">
+                    <input type="hidden" id="contactId">
+                    
+                    <div class="form-group">
+                        <label for="contactName">Nome</label>
+                        <input type="text" id="contactName" class="form-control" placeholder="Nome do contato">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactPhoto">Foto de Perfil (URL)</label>
+                        <input type="text" id="contactPhoto" class="form-control" placeholder="URL da foto">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="contactCPF">CPF</label>
+                                <input type="text" id="contactCPF" class="form-control" placeholder="000.000.000-00">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="contactRG">RG</label>
+                                <input type="text" id="contactRG" class="form-control" placeholder="00.000.000-0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactAddress">Endereço</label>
+                        <input type="text" id="contactAddress" class="form-control" placeholder="Endereço completo">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contactNotes">Observações</label>
+                        <textarea id="contactNotes" class="form-control" rows="3" placeholder="Observações adicionais"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelContactBtn">Cancelar</button>
+                <button class="btn btn-primary" id="saveContactBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cadastro -->
+    <div class="modal-backdrop" id="registerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Cadastrar Usuário</h3>
+                <button class="modal-close" id="closeRegisterModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="registerName">Nome Completo</label>
+                        <input type="text" id="registerName" class="form-control" placeholder="Seu nome completo">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerEmail">E-mail</label>
+                        <input type="email" id="registerEmail" class="form-control" placeholder="Seu e-mail">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerPassword">Senha</label>
+                        <input type="password" id="registerPassword" class="form-control" placeholder="Sua senha">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerConfirmPassword">Confirmar Senha</label>
+                        <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirme sua senha">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerCompany">Empresa</label>
+                        <select id="registerCompany" class="form-control">
+                            <option value="">Selecione uma empresa</option>
+                            <option value="1">FarmaCenter</option>
+                            <option value="2">DrogaMais</option>
+                            <option value="3">Farmácia Popular</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerRole">Cargo</label>
+                        <select id="registerRole" class="form-control">
+                            <option value="supervisor">Supervisor</option>
+                            <option value="attendant">Atendente</option>
+                            <option value="delivery">Entregador</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelRegisterBtn">Cancelar</button>
+                <button class="btn btn-primary" id="saveRegisterBtn">Cadastrar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Sistema de Login
-        document.getElementById('loginBtn').addEventListener('click', function() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            if (email && password) {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'flex';
-            } else {
-                alert('Por favor, preencha todos os campos!');
+        // Configurações
+        const API_BASE_URL = 'http://localhost:3001';
+        let currentUser = null;
+        let socket = null;
+        let currentConversation = null;
+        let conversations = [];
+        let contacts = {};
+
+        // Função para formatar número de telefone
+        function formatPhoneNumber(phone) {
+            if (!phone) return '';
+            const cleanPhone = phone.replace('@c.us', '').replace('55', '');
+            if (cleanPhone.length === 10) {
+                return `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,6)}-${cleanPhone.substring(6)}`;
+            } else if (cleanPhone.length === 11) {
+                return `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,7)}-${cleanPhone.substring(7)}`;
             }
-        });
+            return phone;
+        }
 
-        // Alternar tipo de usuário no login
-        document.querySelectorAll('.user-type-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.user-type-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
+        // Função para determinar a prioridade da conversa
+        function getConversationPriority(timestamp) {
+            const now = new Date();
+            const diffMinutes = (now - new Date(timestamp)) / (1000 * 60);
+            
+            if (diffMinutes > 10) {
+                return "high";
+            } else if (diffMinutes > 5) {
+                return "medium";
+            } else {
+                return "normal";
+            }
+        }
+
+        // Função para fazer login
+        async function login(email, password) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    currentUser = data.user;
+                    return { success: true, user: data.user };
+                } else {
+                    return { success: false, error: data.error || 'Erro no login' };
+                }
+            } catch (error) {
+                console.error('Erro no login:', error);
+                return { success: false, error: 'Erro de conexão com o servidor' };
+            }
+        }
+
+        // Função para fazer requisições autenticadas
+        async function apiRequest(url, options = {}) {
+            const token = localStorage.getItem('token');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}${url}`, {
+                    ...options,
+                    headers
+                });
+
+                if (response.status === 401) {
+                    // Token expirado, fazer logout
+                    logout();
+                    return null;
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                return null;
+            }
+        }
+
+        // Função para carregar conversas
+        async function loadConversations(filter = "all") {
+            const conversationsList = document.getElementById('conversationsList');
+            conversationsList.innerHTML = '<div class="text-center p-3"><i class="fas fa-spinner fa-spin"></i> Carregando conversas...</div>';
+
+            try {
+                const data = await apiRequest('/messages/conversations/recent?limit=10');
+                
+                if (data && data.success) {
+                    conversations = data.conversations;
+                    renderConversations(filter);
+                } else {
+                    conversationsList.innerHTML = '<div class="text-center p-3 text-danger">Erro ao carregar conversas</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar conversas:', error);
+                conversationsList.innerHTML = '<div class="text-center p-3 text-danger">Erro ao carregar conversas</div>';
+            }
+        }
+
+        // Função para renderizar conversas
+        function renderConversations(filter = "all") {
+            const conversationsList = document.getElementById('conversationsList');
+            conversationsList.innerHTML = '';
+
+            let filteredConversations = conversations;
+            if (filter !== "all") {
+                filteredConversations = conversations.filter(conv => conv.priority === filter);
+            }
+
+            if (filteredConversations.length === 0) {
+                conversationsList.innerHTML = '<div class="text-center p-3">Nenhuma conversa encontrada</div>';
+                return;
+            }
+
+            filteredConversations.forEach(conversation => {
+                const conversationElement = document.createElement('div');
+                conversationElement.className = `conversation-item ${conversation.priority !== 'normal' ? 'priority-' + conversation.priority : ''}`;
+                conversationElement.dataset.id = conversation.phone_number;
+
+                const timeAgo = getTimeAgo(conversation.last_message_time);
+                
+                conversationElement.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <div class="conversation-name">${conversation.contact_name || formatPhoneNumber(conversation.phone_number)}</div>
+                        <div class="conversation-time">${timeAgo}</div>
+                    </div>
+                    <div class="conversation-preview">${conversation.last_message || '[Sem mensagens]'}</div>
+                    ${conversation.unread_count > 0 ? `<span class="badge badge-primary">${conversation.unread_count}</span>` : ''}
+                `;
+
+                conversationElement.addEventListener('click', () => {
+                    document.querySelectorAll('.conversation-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    conversationElement.classList.add('active');
+                    loadConversationMessages(conversation.phone_number);
+                    document.getElementById('chatContainer').style.display = 'block';
+                    document.getElementById('noConversationSelected').style.display = 'none';
+                });
+
+                conversationsList.appendChild(conversationElement);
             });
-        });
+        }
 
-        // Sistema de Logout
-        document.getElementById('logoutBtn').addEventListener('click', function() {
+        // Função para carregar mensagens de uma conversa
+        async function loadConversationMessages(phoneNumber) {
+            const chatMessages = document.getElementById('chatMessages');
+            const currentContact = document.getElementById('currentContact');
+            
+            chatMessages.innerHTML = '<div class="text-center p-3"><i class="fas fa-spinner fa-spin"></i> Carregando mensagens...</div>';
+            currentConversation = phoneNumber;
+
+            try {
+                const data = await apiRequest(`/messages/conversation/${encodeURIComponent(phoneNumber)}/full`);
+                
+                if (data && data.success) {
+                    renderMessages(data.messages);
+                    
+                    // Carrega informações do contato
+                    const contactData = await apiRequest(`/contacts/${encodeURIComponent(phoneNumber)}`);
+                    const contact = contactData && contactData.success ? contactData.contact : null;
+                    
+                    currentContact.innerHTML = `
+                        <img src="${contact?.photo || 'https://via.placeholder.com/40'}" alt="${contact?.name || formatPhoneNumber(phoneNumber)}" class="contact-avatar">
+                        <div>
+                            <div class="font-weight-bold">${contact?.name || formatPhoneNumber(phoneNumber)}</div>
+                            <small class="text-muted">${getTimeAgo(conversations.find(c => c.phone_number === phoneNumber)?.last_message_time)}</small>
+                        </div>
+                    `;
+                } else {
+                    chatMessages.innerHTML = '<div class="text-center p-3 text-danger">Erro ao carregar mensagens</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar mensagens:', error);
+                chatMessages.innerHTML = '<div class="text-center p-3 text-danger">Erro ao carregar mensagens</div>';
+            }
+        }
+
+        // Função para renderizar mensagens
+        function renderMessages(messages) {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '';
+
+            if (!messages || messages.length === 0) {
+                chatMessages.innerHTML = '<div class="text-center p-5 text-muted">Nenhuma mensagem nesta conversa</div>';
+                return;
+            }
+
+            messages.forEach(message => {
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${message.fromMe || message.is_from_me ? 'outgoing' : 'incoming'}`;
+                
+                const timeString = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                messageElement.innerHTML = `
+                    <div class="message-content">${message.content || message.body}</div>
+                    <div class="message-time">${timeString}</div>
+                    ${message.attendant_name ? `<div class="message-attendant">Atendente: ${message.attendant_name}</div>` : ''}
+                `;
+                
+                chatMessages.appendChild(messageElement);
+            });
+
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Função para enviar mensagem
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !currentConversation) return;
+
+            try {
+                const response = await apiRequest('/messages/send', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        to: currentConversation.replace('@c.us', ''),
+                        message: message
+                    })
+                });
+
+                if (response && response.success) {
+                    messageInput.value = '';
+                    // Recarrega as mensagens para mostrar a nova
+                    loadConversationMessages(currentConversation);
+                    // Atualiza a lista de conversas
+                    loadConversations();
+                } else {
+                    alert('Erro ao enviar mensagem');
+                }
+            } catch (error) {
+                console.error('Erro ao enviar mensagem:', error);
+                alert('Erro ao enviar mensagem');
+            }
+        }
+
+        // Função para inicializar WhatsApp
+        async function initializeWhatsApp() {
+            try {
+                const response = await apiRequest('/whatsapp/initialize', {
+                    method: 'POST'
+                });
+
+                if (response && response.success) {
+                    console.log('WhatsApp inicializado');
+                }
+            } catch (error) {
+                console.error('Erro ao inicializar WhatsApp:', error);
+            }
+        }
+
+        // Função para calcular tempo decorrido
+        function getTimeAgo(timestamp) {
+            if (!timestamp) return '';
+            const now = new Date();
+            const diffMs = now - new Date(timestamp);
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) {
+                return 'Agora';
+            } else if (diffMins < 60) {
+                return `${diffMins} min atrás`;
+            } else if (diffHours < 24) {
+                return `${diffHours} h atrás`;
+            } else if (diffDays === 1) {
+                return 'Ontem';
+            } else {
+                return `${diffDays} dias atrás`;
+            }
+        }
+
+        // Função para fazer logout
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            currentUser = null;
             document.getElementById('dashboard').style.display = 'none';
             document.getElementById('loginScreen').style.display = 'flex';
-        });
-
-        // Alternar modo escuro/claro
-        const themeToggles = document.querySelectorAll('.theme-toggle');
-        themeToggles.forEach(toggle => {
-            toggle.addEventListener('click', function() {
-                document.body.classList.toggle('dark-mode');
-                
-                const icon = this.querySelector('i');
-                if (document.body.classList.contains('dark-mode')) {
-                    icon.classList.remove('fa-moon');
-                    icon.classList.add('fa-sun');
-                } else {
-                    icon.classList.remove('fa-sun');
-                    icon.classList.add('fa-moon');
-                }
-            });
-        });
-
-        // Navegação entre páginas
-        document.querySelectorAll('.menu-item').forEach(item => {
-            item.addEventListener('click', function() {
-                // Remove a classe active de todos os itens
-                document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-                // Adiciona a classe active ao item clicado
-                this.classList.add('active');
-                
-                // Esconde todas as páginas
-                document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
-                
-                // Mostra a página correspondente
-                const pageId = 'page-' + this.getAttribute('data-page');
-                document.getElementById(pageId).classList.add('active');
-                
-                // Fecha o menu no mobile
-                if (window.innerWidth <= 992) {
-                    document.querySelector('.sidebar').classList.remove('active');
-                }
-            });
-        });
-
-        // Menu toggle para mobile
-        document.getElementById('menuToggle').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('active');
-        });
-
-        // Fechar menu ao clicar fora (para mobile)
-        document.addEventListener('click', function(event) {
-            const sidebar = document.querySelector('.sidebar');
-            const menuToggle = document.getElementById('menuToggle');
-            
-            if (window.innerWidth <= 992 && 
-                !sidebar.contains(event.target) && 
-                !menuToggle.contains(event.target) &&
-                sidebar.classList.contains('active')) {
-                sidebar.classList.remove('active');
+            if (socket) {
+                socket.disconnect();
             }
-        });
+        }
 
-        // Simulação de funcionalidades dos botões
-        document.querySelectorAll('.btn-success').forEach(btn => {
-            btn.addEventListener('click', function() {
-                alert('Item aprovado com sucesso!');
+        // Inicialização quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se já está logado
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (token && user) {
+                currentUser = JSON.parse(user);
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'flex';
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+                document.getElementById('userRole').textContent = currentUser.role;
+                
+                // Inicializar WhatsApp
+                initializeWhatsApp();
+            }
+
+            // Elementos da interface
+            const loginScreen = document.getElementById('loginScreen');
+            const dashboard = document.getElementById('dashboard');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const menuItems = document.querySelectorAll('.menu-item');
+            const pageContents = document.querySelectorAll('.page-content');
+            const themeToggles = document.querySelectorAll('.theme-toggle');
+            const menuToggle = document.getElementById('menuToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const qrCodeBtn = document.getElementById('qrCodeBtn');
+            const qrCodeModal = document.getElementById('qrCodeModal');
+            const closeQrModal = document.getElementById('closeQrModal');
+            const closeQrModalBtn = document.getElementById('closeQrModalBtn');
+            const refreshConversations = document.getElementById('refreshConversations');
+            const contactDetailsBtn = document.getElementById('contactDetailsBtn');
+            const contactDetailsModal = document.getElementById('contactDetailsModal');
+            const closeContactModal = document.getElementById('closeContactModal');
+            const cancelContactBtn = document.getElementById('cancelContactBtn');
+            const saveContactBtn = document.getElementById('saveContactBtn');
+            const sendMessageBtn = document.getElementById('sendMessageBtn');
+            const messageInput = document.getElementById('messageInput');
+            const attachBtn = document.getElementById('attachBtn');
+            const filePreview = document.getElementById('filePreview');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            const showRegister = document.getElementById('showRegister');
+            const registerModal = document.getElementById('registerModal');
+            const closeRegisterModal = document.getElementById('closeRegisterModal');
+            const cancelRegisterBtn = document.getElementById('cancelRegisterBtn');
+            const saveRegisterBtn = document.getElementById('saveRegisterBtn');
+            const userTypeButtons = document.querySelectorAll('.user-type-btn');
+            const loginError = document.getElementById('loginError');
+
+            // Login
+            loginBtn.addEventListener('click', async function() {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                if (!email || !password) {
+                    loginError.textContent = 'Por favor, preencha todos os campos';
+                    loginError.style.display = 'block';
+                    return;
+                }
+
+                const result = await login(email, password);
+                
+                if (result.success) {
+                    loginScreen.style.display = 'none';
+                    dashboard.style.display = 'flex';
+                    document.getElementById('userName').textContent = result.user.name;
+                    document.getElementById('userAvatar').textContent = result.user.name.charAt(0).toUpperCase();
+                    document.getElementById('userRole').textContent = result.user.role;
+                    loginError.style.display = 'none';
+                    
+                    // Inicializar WhatsApp
+                    initializeWhatsApp();
+                } else {
+                    loginError.textContent = result.error;
+                    loginError.style.display = 'block';
+                }
+            });
+
+            // Logout
+            logoutBtn.addEventListener('click', logout);
+
+            // Navegação do menu
+            menuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const page = this.dataset.page;
+                    
+                    menuItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    pageContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === `page-${page}`) {
+                            content.classList.add('active');
+                        }
+                    });
+                    
+                    if (page === 'messages') {
+                        loadConversations();
+                    }
+                });
+            });
+
+            // Alternar tema claro/escuro
+            themeToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    document.body.classList.toggle('dark-mode');
+                    
+                    const icon = this.querySelector('i');
+                    if (document.body.classList.contains('dark-mode')) {
+                        icon.className = 'fas fa-sun';
+                    } else {
+                        icon.className = 'fas fa-moon';
+                    }
+                });
+            });
+
+            // Menu toggle para mobile
+            menuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('active');
+            });
+
+            // QR Code
+            qrCodeBtn.addEventListener('click', function() {
+                qrCodeModal.classList.add('active');
+                
+                // Simular QR Code (em produção, viria do servidor)
+                setTimeout(() => {
+                    document.getElementById('qrCodeImage').innerHTML = `
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://web.whatsapp.com/" alt="QR Code" class="img-fluid">
+                    `;
+                    
+                    const terminal = document.getElementById('qrTerminal');
+                    terminal.innerHTML += `
+                        <div class="line"><span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <span class="info">[WA-${currentUser.establishment.id}]</span> QR Code gerado</div>
+                        <div class="line"><span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <span class="info">[WA-${currentUser.establishment.id}]</span> Aguardando autenticação...</div>
+                    `;
+                    terminal.scrollTop = terminal.scrollHeight;
+                }, 1000);
+            });
+
+            // Fechar modal QR Code
+            closeQrModal.addEventListener('click', function() {
+                qrCodeModal.classList.remove('active');
+            });
+
+            closeQrModalBtn.addEventListener('click', function() {
+                qrCodeModal.classList.remove('active');
+            });
+
+            // Atualizar conversas
+            refreshConversations.addEventListener('click', function() {
+                loadConversations();
+            });
+
+            // Detalhes do contato
+            contactDetailsBtn.addEventListener('click', async function() {
+                if (!currentConversation) return;
+
+                try {
+                    const contactData = await apiRequest(`/contacts/${encodeURIComponent(currentConversation)}`);
+                    const contact = contactData && contactData.success ? contactData.contact : null;
+                    
+                    document.getElementById('contactId').value = currentConversation;
+                    document.getElementById('contactName').value = contact?.name || '';
+                    document.getElementById('contactPhoto').value = contact?.photo || '';
+                    document.getElementById('contactCPF').value = contact?.cpf || '';
+                    document.getElementById('contactRG').value = contact?.rg || '';
+                    document.getElementById('contactAddress').value = contact?.address || '';
+                    document.getElementById('contactNotes').value = contact?.notes || '';
+                    document.getElementById('contactPhoneDisplay').textContent = formatPhoneNumber(currentConversation);
+                    document.getElementById('contactAvatarLarge').src = contact?.photo || 'https://via.placeholder.com/150';
+                    
+                    contactDetailsModal.classList.add('active');
+                } catch (error) {
+                    console.error('Erro ao carregar contato:', error);
+                }
+            });
+
+            // Fechar modal de detalhes do contato
+            closeContactModal.addEventListener('click', function() {
+                contactDetailsModal.classList.remove('active');
+            });
+
+            cancelContactBtn.addEventListener('click', function() {
+                contactDetailsModal.classList.remove('active');
+            });
+
+            // Salvar dados do contato
+            saveContactBtn.addEventListener('click', async function() {
+                const contactId = document.getElementById('contactId').value;
+                const contactName = document.getElementById('contactName').value;
+                const contactPhoto = document.getElementById('contactPhoto').value;
+                const contactCPF = document.getElementById('contactCPF').value;
+                const contactRG = document.getElementById('contactRG').value;
+                const contactAddress = document.getElementById('contactAddress').value;
+                const contactNotes = document.getElementById('contactNotes').value;
+
+                try {
+                    const response = await apiRequest('/contacts', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            phone_number: contactId,
+                            name: contactName,
+                            photo: contactPhoto,
+                            cpf: contactCPF,
+                            rg: contactRG,
+                            address: contactAddress,
+                            notes: contactNotes
+                        })
+                    });
+
+                    if (response && response.success) {
+                        contactDetailsModal.classList.remove('active');
+                        loadConversationMessages(currentConversation);
+                        loadConversations();
+                        alert('Dados do contato salvos com sucesso!');
+                    } else {
+                        alert('Erro ao salvar dados do contato');
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar contato:', error);
+                    alert('Erro ao salvar dados do contato');
+                }
+            });
+
+            // Enviar mensagem
+            sendMessageBtn.addEventListener('click', sendMessage);
+
+            // Enviar mensagem com Enter
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Anexar arquivo
+            attachBtn.addEventListener('click', function() {
+                // Em produção, isso abriria um seletor de arquivos
+                filePreview.innerHTML = `
+                    <div class="file-preview">
+                        <p><i class="fas fa-image"></i> imagem.png</p>
+                        <button class="btn btn-sm btn-danger" id="removeFile">Remover</button>
+                    </div>
+                `;
+                
+                document.getElementById('removeFile').addEventListener('click', function() {
+                    filePreview.innerHTML = '';
+                });
+            });
+
+            // Filtrar conversas
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    const filter = this.dataset.filter;
+                    renderConversations(filter);
+                });
+            });
+
+            // Mostrar modal de cadastro
+            showRegister.addEventListener('click', function(e) {
+                e.preventDefault();
+                registerModal.classList.add('active');
+            });
+
+            // Fechar modal de cadastro
+            closeRegisterModal.addEventListener('click', function() {
+                registerModal.classList.remove('active');
+            });
+
+            cancelRegisterBtn.addEventListener('click', function() {
+                registerModal.classList.remove('active');
+            });
+
+            // Salvar cadastro
+            saveRegisterBtn.addEventListener('click', async function() {
+                const name = document.getElementById('registerName').value;
+                const email = document.getElementById('registerEmail').value;
+                const password = document.getElementById('registerPassword').value;
+                const confirmPassword = document.getElementById('registerConfirmPassword').value;
+                const company = document.getElementById('registerCompany').value;
+                const role = document.getElementById('registerRole').value;
+                
+                if (!name || !email || !password || !confirmPassword || !company) {
+                    alert('Por favor, preencha todos os campos obrigatórios');
+                    return;
+                }
+                
+                if (password !== confirmPassword) {
+                    alert('As senhas não coincidem');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name,
+                            email,
+                            password,
+                            role_name: role.charAt(0).toUpperCase() + role.slice(1),
+                            cnpj: company === '1' ? '12345678000195' : 
+                                  company === '2' ? '12345678000196' : '12345678000197'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        alert(data.message);
+                        registerModal.classList.remove('active');
+                        document.getElementById('registerForm').reset();
+                    } else {
+                        alert(data.error || 'Erro no cadastro');
+                    }
+                } catch (error) {
+                    console.error('Erro no cadastro:', error);
+                    alert('Erro no cadastro');
+                }
+            });
+
+            // Selecionar tipo de usuário
+            userTypeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    userTypeButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                });
             });
         });
-
-        document.querySelectorAll('.btn-danger').forEach(btn => {
-            btn.addEventListener('click', function() {
-                alert('Item recusado!');
-            });
-        });
-
-        // Esquecer senha
-        document.getElementById('forgotPassword').addEventListener('click', function(e) {
-            e.preventDefault();
-            alert('Um e-mail de recuperação foi enviado para o endereço cadastrado.');
-        });
-		
-		// WhatsApp Integration - CÓDIGO CORRIGIDO
-		let currentChat = null;
-		let socket = null;
-		let allConversations = [];
-
-		// Inicializar WhatsApp quando a página de mensagens for acessada
-		document.addEventListener('DOMContentLoaded', function() {
-			const observer = new MutationObserver(function(mutations) {
-				mutations.forEach(function(mutation) {
-					if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-						const messagesPage = document.getElementById('page-messages');
-						if (messagesPage.classList.contains('active')) {
-							initWhatsApp();
-						} else {
-							disconnectWhatsApp();
-						}
-					}
-				});
-			});
-
-			observer.observe(document.getElementById('page-messages'), {
-				attributes: true,
-				attributeFilter: ['class']
-			});
-		});
-
-		function initWhatsApp() {
-			const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
-			
-			try {
-				socket = io(serverUrl, { 
-					transports: ['websocket', 'polling'],
-					autoConnect: true 
-				});
-
-				setupSocketEvents();
-				updateStatus('Conectando...', 'warning');
-				
-			} catch (error) {
-				console.error('Erro ao conectar WhatsApp:', error);
-				updateStatus('Erro de conexão', 'danger');
-			}
-		}
-
-		function setupSocketEvents() {
-			socket.on('connect', () => {
-				updateStatus('Conectado ao servidor', 'success');
-				// Carregar conversas ao conectar
-				loadConversations();
-			});
-
-			socket.on('wa:qr', (data) => {
-				document.getElementById('qrImage').src = data.dataUrl;
-				$('#qrModal').modal('show');
-				updateStatus('Aguardando QR Code', 'warning');
-			});
-
-			socket.on('wa:status', (status) => {
-				const statusText = status.status || status;
-				if (statusText === 'ready' || statusText === 'authenticated') {
-					updateStatus('Conectado ao WhatsApp', 'success');
-					$('#qrModal').modal('hide');
-					loadConversations();
-				} else if (statusText === 'qr_code') {
-					updateStatus('QR Code gerado', 'warning');
-				} else if (statusText === 'disconnected') {
-					updateStatus('Desconectado', 'danger');
-				}
-			});
-
-			socket.on('wa:message', (message) => {
-				console.log('Nova mensagem recebida:', message);
-				addMessageToChat(message);
-				updateConversationList(message);
-			});
-
-			socket.on('wa:sent', (message) => {
-				console.log('Mensagem enviada:', message);
-				addMessageToChat({...message, fromMe: true});
-			});
-
-			socket.on('disconnect', () => {
-				updateStatus('Desconectado do servidor', 'danger');
-			});
-		}
-
-		function updateStatus(text, type) {
-			const badge = document.getElementById('waStatusBadge');
-			const detail = document.getElementById('waStatusDetail');
-			
-			badge.textContent = text;
-			badge.className = `badge badge-${type}`;
-			detail.textContent = text;
-		}
-
-		// CORREÇÃO: Buscar conversas do servidor em vez de usar dados fixos
-		async function loadConversations() {
-			try {
-				const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
-				const response = await fetch(`${serverUrl}/messages/conversations`);
-				
-				if (response.ok) {
-					const data = await response.json();
-					
-					if (data.success && data.conversations) {
-						displayConversations(data.conversations);
-						allConversations = data.conversations;
-					} else {
-						// Fallback para dados de exemplo se a API falhar
-						displayConversations(getSampleConversations());
-					}
-				} else {
-					throw new Error('Erro na resposta do servidor');
-				}
-			} catch (error) {
-				console.error('Erro ao carregar conversas:', error);
-				// Fallback para dados de exemplo
-				displayConversations(getSampleConversations());
-			}
-		}
-
-		function getSampleConversations() {
-			return [
-				{ 
-					id: 1, 
-					phone_number: '5511999999999@c.us', 
-					contact_name: 'Cliente 1', 
-					last_message: 'Olá, gostaria de informações', 
-					last_message_time: new Date().toISOString(),
-					unread_count: 2 
-				},
-				{ 
-					id: 2, 
-					phone_number: '5511988888888@c.us', 
-					contact_name: 'Cliente 2', 
-					last_message: 'Obrigado pela ajuda!', 
-					last_message_time: new Date(Date.now() - 3600000).toISOString(),
-					unread_count: 0 
-				},
-				{ 
-					id: 3, 
-					phone_number: '5511977777777@c.us', 
-					contact_name: 'Cliente 3', 
-					last_message: 'Posso fazer um pedido?', 
-					last_message_time: new Date(Date.now() - 86400000).toISOString(),
-					unread_count: 1 
-				}
-			];
-		}
-
-		function displayConversations(conversations) {
-			const list = document.getElementById('conversationList');
-			list.innerHTML = '';
-
-			conversations.forEach(conv => {
-				const item = document.createElement('div');
-				item.className = 'conversation-item';
-				item.dataset.phone = conv.phone_number;
-				
-				const time = formatConversationTime(conv.last_message_time);
-				const preview = conv.last_message || '[Sem mensagens]';
-				
-				item.innerHTML = `
-					<div class="d-flex justify-content-between align-items-center">
-						<div class="conversation-name">${conv.contact_name || conv.phone_number}</div>
-						<div class="conversation-time">${time}</div>
-					</div>
-					<div class="conversation-preview">${preview}</div>
-					${conv.unread_count > 0 ? `<span class="badge badge-primary">${conv.unread_count}</span>` : ''}
-				`;
-				
-				item.addEventListener('click', () => selectConversation(conv));
-				list.appendChild(item);
-			});
-		}
-
-		function formatConversationTime(timestamp) {
-			if (!timestamp) return '';
-			
-			const date = new Date(timestamp);
-			const now = new Date();
-			const diffMs = now - date;
-			const diffMins = Math.floor(diffMs / 60000);
-			const diffHours = Math.floor(diffMs / 3600000);
-			const diffDays = Math.floor(diffMs / 86400000);
-			
-			if (diffMins < 1) return 'Agora';
-			if (diffMins < 60) return `${diffMins}m`;
-			if (diffHours < 24) return `${diffHours}h`;
-			if (diffDays < 7) return `${diffDays}d`;
-			
-			return date.toLocaleDateString('pt-BR');
-		}
-
-		// CORREÇÃO: Selecionar conversa corretamente
-		async function selectConversation(conversation) {
-			currentChat = conversation;
-			document.getElementById('currentChatName').textContent = conversation.contact_name || conversation.phone_number;
-			document.getElementById('messageInput').disabled = false;
-			document.getElementById('btnSendMessage').disabled = false;
-			
-			// Carregar mensagens da conversa
-			await loadChatMessages(conversation.phone_number);
-			
-			// Ativar item na lista
-			document.querySelectorAll('.conversation-item').forEach(item => {
-				item.classList.remove('active');
-			});
-			event.currentTarget.classList.add('active');
-		}
-
-		// CORREÇÃO: Buscar mensagens específicas da conversa
-		async function loadChatMessages(phoneNumber) {
-			const messagesArea = document.getElementById('chatMessages');
-			
-			// Mostra loading
-			messagesArea.innerHTML = `
-				<div class="text-center mt-5">
-					<i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-					<p>Carregando mensagens...</p>
-				</div>
-			`;
-
-			try {
-				const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
-				const response = await fetch(`${serverUrl}/messages/conversation/${encodeURIComponent(phoneNumber)}`);
-				
-				if (response.ok) {
-					const data = await response.json();
-					
-					if (data.success) {
-						displayMessages(data.messages);
-					} else {
-						throw new Error('Erro na resposta do servidor');
-					}
-				} else {
-					throw new Error('Erro HTTP: ' + response.status);
-				}
-			} catch (error) {
-				console.error('Erro ao carregar mensagens:', error);
-				// Fallback para buscar do localStorage ou dados de exemplo
-				const localMessages = getLocalMessages(phoneNumber);
-				displayMessages(localMessages);
-			}
-		}
-
-		function getLocalMessages(phoneNumber) {
-			// Tenta buscar do localStorage
-			const stored = localStorage.getItem(`messages_${phoneNumber}`);
-			if (stored) {
-				return JSON.parse(stored);
-			}
-			
-			// Dados de exemplo baseados no número
-			if (phoneNumber === '5511999999999@c.us') {
-				return [
-					{ id: 1, content: 'Olá, como posso ajudar?', is_from_me: true, timestamp: new Date(Date.now() - 600000).toISOString() },
-					{ id: 2, content: 'Gostaria de informações sobre um produto', is_from_me: false, timestamp: new Date(Date.now() - 300000).toISOString() }
-				];
-			} else if (phoneNumber === '5511988888888@c.us') {
-				return [
-					{ id: 1, content: 'Boa tarde!', is_from_me: true, timestamp: new Date(Date.now() - 7200000).toISOString() },
-					{ id: 2, content: 'Obrigado pela ajuda!', is_from_me: false, timestamp: new Date(Date.now() - 3600000).toISOString() }
-				];
-			}
-			
-			return [];
-		}
-
-		// CORREÇÃO PRINCIPAL: Exibir mensagens corretamente
-		function displayMessages(messages) {
-			const messagesArea = document.getElementById('chatMessages');
-			messagesArea.innerHTML = '';
-			
-			if (!messages || messages.length === 0) {
-				messagesArea.innerHTML = `
-					<div class="text-center text-muted mt-5">
-						<i class="fas fa-comments fa-3x mb-3"></i>
-						<p>Nenhuma mensagem nesta conversa</p>
-					</div>
-				`;
-				return;
-			}
-			
-			// Ordenar mensagens por timestamp
-			messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-			
-			// Adicionar cada mensagem
-			messages.forEach(msg => {
-				addMessageToDisplay(msg, false); // false = não fazer scroll para cada uma
-			});
-			
-			// Fazer scroll para a última mensagem
-			messagesArea.scrollTop = messagesArea.scrollHeight;
-			
-			console.log(`${messages.length} mensagens carregadas para a conversa`);
-		}
-
-		// CORREÇÃO: Função para adicionar mensagem ao display
-		function addMessageToDisplay(message, doScroll = true) {
-			const messagesArea = document.getElementById('chatMessages');
-			const emptyState = document.getElementById('emptyChatState');
-			
-			// Remove o estado vazio se existir
-			if (emptyState) {
-				emptyState.style.display = 'none';
-			}
-
-			const messageDiv = document.createElement('div');
-			messageDiv.className = `message ${message.fromMe || message.is_from_me ? 'outgoing' : 'incoming'}`;
-			
-			// CORREÇÃO: Tratar conteúdo da mensagem corretamente
-			let messageContent = '[Mensagem sem texto]';
-			
-			if (message.body || message.content) {
-				messageContent = message.body || message.content;
-			} else if (message.hasMedia) {
-				messageContent = '📎 Mídia';
-			} else if (message.type === 'image') {
-				messageContent = '📷 Imagem';
-			} else if (message.type === 'video') {
-				messageContent = '🎥 Vídeo';
-			} else if (message.type === 'audio') {
-				messageContent = '🎵 Áudio';
-			}
-			
-			const messageTime = formatTime(message.timestamp || new Date().toISOString());
-			
-			messageDiv.innerHTML = `
-				<div class="message-content">${escapeHtml(messageContent)}</div>
-				<div class="message-time">${messageTime}</div>
-			`;
-			
-			messagesArea.appendChild(messageDiv);
-			
-			if (doScroll) {
-				messagesArea.scrollTop = messagesArea.scrollHeight;
-			}
-		}
-
-		// CORREÇÃO: Adicionar mensagem ao chat (usada pelos eventos socket)
-		function addMessageToChat(message) {
-			// Verificar se a mensagem pertence à conversa atual
-			if (currentChat) {
-				const messageContact = message.fromMe ? message.to : message.from;
-				if (messageContact === currentChat.phone_number) {
-					addMessageToDisplay(message);
-				}
-			}
-			
-			// Atualizar a lista de conversas
-			updateConversationList(message);
-		}
-
-		function updateConversationList(message) {
-			// Encontrar ou criar a conversa na lista
-			const messageContact = message.fromMe ? message.to : message.from;
-			let conversation = allConversations.find(conv => conv.phone_number === messageContact);
-			
-			if (!conversation) {
-				// Criar nova conversa
-				conversation = {
-					id: allConversations.length + 1,
-					phone_number: messageContact,
-					contact_name: messageContact, // Em produção, buscar nome do contato
-					last_message: message.body || getMessageTypeDescription(message),
-					last_message_time: new Date().toISOString(),
-					unread_count: message.fromMe ? 0 : 1
-				};
-				allConversations.unshift(conversation);
-			} else {
-				// Atualizar conversa existente
-				conversation.last_message = message.body || getMessageTypeDescription(message);
-				conversation.last_message_time = new Date().toISOString();
-				if (!message.fromMe) {
-					conversation.unread_count = (conversation.unread_count || 0) + 1;
-				}
-				
-				// Mover para o topo
-				allConversations = allConversations.filter(conv => conv.phone_number !== messageContact);
-				allConversations.unshift(conversation);
-			}
-			
-			// Atualizar display
-			displayConversations(allConversations);
-		}
-
-		function getMessageTypeDescription(message) {
-			if (message.type === 'image') return '📷 Imagem';
-			if (message.type === 'video') return '🎥 Vídeo';
-			if (message.type === 'audio') return '🎵 Áudio';
-			if (message.type === 'document') return '📄 Documento';
-			if (message.hasMedia) return '📎 Mídia';
-			return '[Mensagem]';
-		}
-
-		// Função auxiliar para escapar HTML
-		function escapeHtml(text) {
-			if (!text) return '';
-			const div = document.createElement('div');
-			div.textContent = text;
-			return div.innerHTML;
-		}
-
-		function formatTime(timestamp) {
-			try {
-				const date = new Date(timestamp);
-				return date.toLocaleTimeString('pt-BR', { 
-					hour: '2-digit', 
-					minute: '2-digit' 
-				});
-			} catch (e) {
-				return '--:--';
-			}
-		}
-
-		// Event Listeners
-		document.getElementById('btnSendMessage').addEventListener('click', sendMessage);
-		document.getElementById('messageInput').addEventListener('keypress', function(e) {
-			if (e.key === 'Enter') {
-				sendMessage();
-			}
-		});
-
-		document.getElementById('btnAttach').addEventListener('click', function() {
-			document.getElementById('fileInput').click();
-		});
-
-		document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-		document.getElementById('btnShowQR').addEventListener('click', showQRCode);
-		document.getElementById('btnReconnect').addEventListener('click', reconnectWhatsApp);
-
-		function sendMessage() {
-			const input = document.getElementById('messageInput');
-			const message = input.value.trim();
-			
-			if (!message || !currentChat) return;
-
-			// CORREÇÃO: Usar phone_number em vez de id
-			const phoneToSend = currentChat.phone_number.replace('@c.us', '');
-
-			if (socket && socket.connected) {
-				socket.emit('widget:send', {
-					to: phoneToSend,
-					message: message
-				});
-			} else {
-				// Fallback para REST API
-				sendMessageViaREST(phoneToSend, message);
-			}
-
-			input.value = '';
-		}
-
-		function sendMessageViaREST(to, message) {
-			const serverUrl = localStorage.getItem('wa_server') || 'https://teste-deploy-rjuf.onrender.com';
-			
-			fetch(`${serverUrl}/send`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					to: to,
-					message: message
-				})
-			})
-			.then(response => response.json())
-			.then(data => {
-				console.log('Mensagem enviada via REST:', data);
-				// Adicionar mensagem localmente para feedback imediato
-				if (data.success) {
-					addMessageToDisplay({
-						body: message,
-						fromMe: true,
-						timestamp: new Date().toISOString()
-					});
-				}
-			})
-			.catch(error => {
-				console.error('Erro ao enviar mensagem:', error);
-			});
-		}
-
-		function handleFileSelect(event) {
-			const file = event.target.files[0];
-			if (!file) return;
-			showFilePreview(file);
-		}
-
-		function showFilePreview(file) {
-			const preview = document.getElementById('filePreview');
-			preview.style.display = 'block';
-			
-			if (file.type.startsWith('image/')) {
-				preview.innerHTML = `
-					<div class="file-preview">
-						<img src="${URL.createObjectURL(file)}" alt="Preview" style="max-height: 150px;">
-						<div class="mt-2">
-							<button class="btn btn-primary btn-sm" onclick="sendFile()">Enviar Imagem</button>
-							<button class="btn btn-secondary btn-sm" onclick="clearPreview()">Cancelar</button>
-						</div>
-					</div>
-				`;
-			} else if (file.type.startsWith('audio/')) {
-				preview.innerHTML = `
-					<div class="file-preview">
-						<audio controls src="${URL.createObjectURL(file)}" class="w-100"></audio>
-						<div class="mt-2">
-							<button class="btn btn-primary btn-sm" onclick="transcribeAudio()">Transcrever</button>
-							<button class="btn btn-success btn-sm" onclick="sendFile()">Enviar Áudio</button>
-							<button class="btn btn-secondary btn-sm" onclick="clearPreview()">Cancelar</button>
-						</div>
-					</div>
-				`;
-			} else {
-				preview.innerHTML = `
-					<div class="file-preview">
-						<i class="fas fa-file fa-3x mb-2"></i>
-						<div>${file.name}</div>
-						<div class="mt-2">
-							<button class="btn btn-primary btn-sm" onclick="sendFile()">Enviar Arquivo</button>
-							<button class="btn btn-secondary btn-sm" onclick="clearPreview()">Cancelar</button>
-						</div>
-					</div>
-				`;
-			}
-		}
-
-		function transcribeAudio() {
-			const fileInput = document.getElementById('fileInput');
-			const file = fileInput.files[0];
-			
-			if (!file) return;
-
-			// Simulação de transcrição - em produção, integrar com API de transcrição
-			const preview = document.getElementById('filePreview');
-			preview.innerHTML += `
-				<div class="audio-transcript mt-2">
-					<i class="fas fa-text-width"></i> 
-					<strong>Transcrição:</strong> 
-					<span id="transcriptText">Processando áudio... (simulação)</span>
-				</div>
-			`;
-
-			// Simular processamento
-			setTimeout(() => {
-				document.getElementById('transcriptText').textContent = 
-					"Esta é uma transcrição simulada do áudio. Em produção, integre com uma API de STT como Google Speech-to-Text.";
-			}, 2000);
-		}
-
-		function sendFile() {
-			const fileInput = document.getElementById('fileInput');
-			const file = fileInput.files[0];
-			
-			if (!file || !currentChat) return;
-
-			// Aqui você implementaria o envio do arquivo via Socket.io ou REST API
-			console.log('Enviando arquivo:', file.name, 'para:', currentChat.id);
-			
-			// Simular envio bem-sucedido
-			addMessageToDisplay({
-				body: `Arquivo enviado: ${file.name}`,
-				fromMe: true,
-				timestamp: new Date().toISOString()
-			});
-
-			clearPreview();
-		}
-
-		function clearPreview() {
-			document.getElementById('filePreview').style.display = 'none';
-			document.getElementById('filePreview').innerHTML = '';
-			document.getElementById('fileInput').value = '';
-		}
-
-		function showQRCode() {
-			// Solicitar QR Code do servidor
-			if (socket && socket.connected) {
-				socket.emit('client:reconnect');
-			}
-		}
-
-		function reconnectWhatsApp() {
-			if (socket) {
-				socket.disconnect();
-				socket.connect();
-			} else {
-				initWhatsApp();
-			}
-		}
-
-		function disconnectWhatsApp() {
-			if (socket) {
-				socket.disconnect();
-			}
-		}
-
     </script>
 </body>
 </html>
