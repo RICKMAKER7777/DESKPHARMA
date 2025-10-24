@@ -1,4 +1,4 @@
-// index.js - API WhatsApp com Heartbeat e Conexão Persistente
+// index.js - API WhatsApp com Heartbeat e Conexão Persistente + MÍDIAS
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -10,8 +10,14 @@ import sqlite3 from 'sqlite3';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
+import multer from 'multer';
+import mime from 'mime-types';
+import { fileURLToPath } from 'url';
 
-const { Client, LocalAuth } = pkg;
+const { Client, LocalAuth, MessageMedia } = pkg;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
@@ -24,20 +30,60 @@ const JWT_SECRET = process.env.JWT_SECRET || 'deskpharma_secret_key_2024';
 const IS_RENDER = process.env.RENDER === 'true';
 const DB_PATH = IS_RENDER ? '/tmp/whatsapp_db.sqlite' : './whatsapp_db.sqlite';
 const SESSIONS_PATH = IS_RENDER ? '/tmp/sessions' : './sessions';
+const UPLOADS_PATH = IS_RENDER ? '/tmp/uploads' : './uploads';
 
 // Criar diretórios se não existirem
-if (!fs.existsSync(path.dirname(DB_PATH))) {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-}
-if (!fs.existsSync(SESSIONS_PATH)) {
-    fs.mkdirSync(SESSIONS_PATH, { recursive: true });
-}
+[path.dirname(DB_PATH), SESSIONS_PATH, UPLOADS_PATH].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
+
+// 🔥 CONFIGURAÇÃO MULTER PARA UPLOAD DE MÍDIAS
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, UPLOADS_PATH);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 50 * 1024 * 1024 // 50MB
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-ms-wmv',
+            'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm',
+            'application/pdf', 
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/plain',
+            'application/zip',
+            'application/x-rar-compressed'
+        ];
+        
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Tipo de arquivo não permitido: ${file.mimetype}`), false);
+        }
+    }
+});
 
 app.use(cors({ 
     origin: ORIGIN === '*' ? true : ORIGIN, 
     credentials: true 
 }));
 app.use(express.json({ limit: '50mb' }));
+app.use('/uploads', express.static(UPLOADS_PATH));
 
 const io = new SocketIOServer(server, {
     cors: { 
@@ -49,7 +95,7 @@ const io = new SocketIOServer(server, {
 // ==================== CONFIGURAÇÃO DO BANCO DE DADOS ====================
 let db;
 
-// Funções do banco de dados
+// Funções do banco de dados (mantidas iguais)
 function dbRun(sql, params = []) {
     return new Promise((resolve, reject) => {
         db.run(sql, params, function(err) {
@@ -148,6 +194,7 @@ async function createTables() {
                 content TEXT,
                 media_url TEXT,
                 media_type TEXT,
+                media_filename TEXT,
                 is_from_me BOOLEAN DEFAULT 0,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 status TEXT DEFAULT 'sent',
@@ -301,7 +348,7 @@ const authenticateToken = (req, res, next) => {
 // ==================== STORAGE EM MEMÓRIA ====================
 const whatsappInstances = new Map();
 const instanceCreationLocks = new Map();
-const connectionHeartbeats = new Map(); // 🔥 HEARTBEATS PARA MANTER CONEXÃO
+const connectionHeartbeats = new Map();
 
 // ==================== FUNÇÕES AUXILIARES ====================
 function normalizeNumber(number) {
@@ -325,10 +372,28 @@ function getDefaultMessageContent(messageType) {
     return defaults[messageType] || '📎 Mídia';
 }
 
-// Salvar mensagem no banco
+// 🔥 FUNÇÃO PARA DETERMINAR TIPO DE MÍDIA
+function getMediaType(mimetype) {
+    if (mimetype.startsWith('image/')) return 'image';
+    if (mimetype.startsWith('video/')) return 'video';
+    if (mimetype.startsWith('audio/')) return 'audio';
+    if (mimetype.includes('pdf') || mimetype.includes('document') || mimetype.includes('sheet')) return 'document';
+    return 'document';
+}
+
+// 🔥 SALVAR MENSAGEM COM SUPORTE A MÍDIAS
 async function saveMessageToDatabase(messageData) {
     try {
-        const { empresa_id, phone_number, message_type, content, is_from_me } = messageData;
+        const { 
+            empresa_id, 
+            phone_number, 
+            message_type, 
+            content, 
+            is_from_me, 
+            media_url = null, 
+            media_type = null,
+            media_filename = null 
+        } = messageData;
         
         let existingConv = await dbGet(
             'SELECT id FROM conversations WHERE empresa_id = ? AND phone_number = ?', 
@@ -348,9 +413,20 @@ async function saveMessageToDatabase(messageData) {
         }
 
         await dbRun(
-            `INSERT INTO messages (empresa_id, conversation_id, phone_number, message_type, content, is_from_me, timestamp) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [empresa_id, convId, phone_number, message_type, content, is_from_me ? 1 : 0, new Date().toISOString()]
+            `INSERT INTO messages (empresa_id, conversation_id, phone_number, message_type, content, media_url, media_type, media_filename, is_from_me, timestamp) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                empresa_id, 
+                convId, 
+                phone_number, 
+                message_type, 
+                content, 
+                media_url,
+                media_type,
+                media_filename,
+                is_from_me ? 1 : 0, 
+                new Date().toISOString()
+            ]
         );
 
         await dbRun(
@@ -360,6 +436,24 @@ async function saveMessageToDatabase(messageData) {
 
     } catch (error) {
         console.error('[DATABASE] Erro ao salvar mensagem:', error);
+    }
+}
+
+// 🔥 CRIAR MESSAGE MEDIA A PARTIR DE ARQUIVO
+async function createMediaFromFile(filePath, filename) {
+    try {
+        const fileBuffer = fs.readFileSync(filePath);
+        const base64Data = fileBuffer.toString('base64');
+        const mimetype = mime.lookup(filePath) || 'application/octet-stream';
+        
+        return {
+            data: base64Data,
+            mimetype: mimetype,
+            filename: filename
+        };
+    } catch (error) {
+        console.error('[MEDIA] Erro ao criar media do arquivo:', error);
+        throw error;
     }
 }
 
@@ -381,7 +475,6 @@ async function clearProblematicSession(empresaId) {
 function startConnectionHeartbeat(empresaId, client) {
     console.log(`[WA-${empresaId}] ❤️  Iniciando heartbeat de conexão...`);
     
-    // Parar heartbeat anterior se existir
     if (connectionHeartbeats.has(empresaId)) {
         clearInterval(connectionHeartbeats.get(empresaId));
     }
@@ -392,16 +485,13 @@ function startConnectionHeartbeat(empresaId, client) {
             if (state === 'CONNECTED') {
                 console.log(`[WA-${empresaId}] ❤️  Conexão ativa - Estado: ${state}`);
                 
-                // 🔥 MANTER ATIVIDADE ENVIANDO COMANDO SIMPLES
                 try {
-                    // Comando simples para manter conexão ativa
                     await client.getChats({ limit: 1 });
                 } catch (activityError) {
                     console.log(`[WA-${empresaId}] ℹ️  Heartbeat activity:`, activityError.message);
                 }
             } else {
                 console.log(`[WA-${empresaId}] ⚠️  Conexão perdida - Estado: ${state}`);
-                // Tentar recuperar conexão
                 try {
                     await client.initialize();
                 } catch (reconnectError) {
@@ -411,7 +501,7 @@ function startConnectionHeartbeat(empresaId, client) {
         } catch (error) {
             console.log(`[WA-${empresaId}] ❌ Erro no heartbeat:`, error.message);
         }
-    }, 30000); // 🔥 A CADA 30 SEGUNDOS
+    }, 30000);
     
     connectionHeartbeats.set(empresaId, heartbeat);
 }
@@ -425,7 +515,7 @@ function stopConnectionHeartbeat(empresaId) {
     }
 }
 
-// ==================== WHATSAPP INSTANCE CORRIGIDA ====================
+// ==================== WHATSAPP INSTANCE CORRIGIDA PARA RENDER ====================
 function createWhatsAppInstance(empresaId, cnpj) {
     console.log(`[WA-${empresaId}] 🚀 Criando instância WhatsApp`);
     
@@ -451,12 +541,13 @@ function createWhatsAppInstance(empresaId, cnpj) {
                 '--disable-renderer-backgrounding',
                 '--disable-dev-shm-usage',
                 '--disable-extensions',
-                '--disable-ipc-flooding-protection'
+                '--disable-ipc-flooding-protection',
+                '--max-old-space-size=512'
             ],
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
             timeout: 60000,
             ignoreHTTPSErrors: true
         },
-        // 🔥 CONFIGURAÇÕES PARA CONEXÃO ESTÁVEL
         takeoverOnConflict: false,
         takeoverTimeoutMs: 0,
         restartOnAuthFail: false,
@@ -464,7 +555,6 @@ function createWhatsAppInstance(empresaId, cnpj) {
         authTimeout: 60000,
         qrTimeout: 45000,
         multiDevice: true,
-        // 🔥 CONFIGURAÇÕES ADICIONAIS PARA ESTABILIDADE
         webVersionCache: {
             type: 'remote',
             remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
@@ -567,7 +657,72 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
     });
 
-    // 🔥 EVENTO CHANGE_STATE - MONITORAR CONEXÃO
+    // 🔥 EVENTO MESSAGE - COM SUPORTE A MÍDIAS
+    client.on('message', async (msg) => {
+        try {
+            console.log(`[WA-${empresaId}] 📩 NOVA MENSAGEM DETECTADA:`);
+            console.log(`[WA-${empresaId}] De: ${msg.from}`);
+            console.log(`[WA-${empresaId}] Tipo: ${msg.type}`);
+            console.log(`[WA-${empresaId}] Corpo: ${msg.body}`);
+            console.log(`[WA-${empresaId}] FromMe: ${msg.fromMe}`);
+            
+            // Ignorar mensagens de newsletter e status
+            if (msg.from.includes('newsletter') || msg.from.includes('status') || msg.from.includes('broadcast')) {
+                console.log(`[WA-${empresaId}] 📨 Mensagem de newsletter/broadcast ignorada`);
+                return;
+            }
+            
+            let messageContent = msg.body || getDefaultMessageContent(msg.type);
+            let media_url = null;
+            let media_type = null;
+            let media_filename = null;
+
+            // 🔥 TRATAR MÍDIAS
+            if (msg.hasMedia) {
+                try {
+                    console.log(`[WA-${empresaId}] 📎 Mensagem contém mídia, baixando...`);
+                    const media = await msg.downloadMedia();
+                    
+                    if (media) {
+                        const fileExtension = mime.extension(media.mimetype) || 'bin';
+                        media_filename = `media_${Date.now()}.${fileExtension}`;
+                        const mediaPath = path.join(UPLOADS_PATH, media_filename);
+                        
+                        // Salvar arquivo
+                        fs.writeFileSync(mediaPath, Buffer.from(media.data, 'base64'));
+                        media_url = `/uploads/${media_filename}`;
+                        media_type = getMediaType(media.mimetype);
+                        
+                        console.log(`[WA-${empresaId}] ✅ Mídia salva: ${mediaPath}`);
+                        messageContent = `📎 ${getDefaultMessageContent(msg.type)}`;
+                    }
+                } catch (mediaError) {
+                    console.error(`[WA-${empresaId}] ❌ Erro ao baixar mídia:`, mediaError);
+                }
+            }
+            
+            console.log(`[WA-${empresaId}] 💾 Salvando no banco...`);
+            
+            await saveMessageToDatabase({
+                empresa_id: empresaId,
+                phone_number: msg.fromMe ? msg.to : msg.from,
+                message_type: msg.type,
+                content: messageContent,
+                is_from_me: msg.fromMe,
+                media_url: media_url,
+                media_type: media_type,
+                media_filename: media_filename,
+                timestamp: new Date(msg.timestamp * 1000)
+            });
+            
+            console.log(`[WA-${empresaId}] ✅ Mensagem salva com sucesso!`);
+
+        } catch (error) {
+            console.error(`[WA-${empresaId}] ❌ Erro ao processar mensagem:`, error);
+        }
+    });
+
+    // 🔥 EVENTOS ADICIONAIS PARA DEBUG (mantidos iguais)
     client.on('change_state', async (state) => {
         console.log(`[WA-${empresaId}] 🔄 MUDANÇA DE ESTADO: ${state}`);
         
@@ -583,7 +738,6 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
     });
 
-    // 🔥 EVENTO AUTH FAILURE
     client.on('auth_failure', async (msg) => {
         console.log(`[WA-${empresaId}] ❌ FALHA NA AUTENTICAÇÃO:`, msg);
         
@@ -600,7 +754,6 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }, 5000);
     });
 
-    // 🔥 EVENTO DISCONNECTED - TRATAMENTO MELHORADO
     client.on('disconnected', async (reason) => {
         console.log(`[WA-${empresaId}] 🔌 DESCONECTADO: ${reason}`);
         
@@ -615,14 +768,12 @@ function createWhatsAppInstance(empresaId, cnpj) {
         
         await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
         
-        // Remover instância da memória
         whatsappInstances.delete(empresaId);
         
         if (reason === 'LOGOUT') {
             console.log(`[WA-${empresaId}] 🚪 LOGOUT detectado - limpando sessão...`);
             await clearProblematicSession(empresaId);
         } else {
-            // 🔥 TENTAR RECONEXÃO AUTOMÁTICA
             console.log(`[WA-${empresaId}] 🔄 Tentando reconexão em 10s...`);
             setTimeout(async () => {
                 try {
@@ -635,56 +786,10 @@ function createWhatsAppInstance(empresaId, cnpj) {
         }
     });
 
-    // 🔥 EVENTO MESSAGE - COM DEBUG DETALHADO
-    client.on('message', async (msg) => {
-    try {
-        console.log(`[WA-${empresaId}] 📩 NOVA MENSAGEM DETECTADA:`);
-        console.log(`[WA-${empresaId}] De: ${msg.from}`);
-        console.log(`[WA-${empresaId}] Para: ${msg.to}`);
-        console.log(`[WA-${empresaId}] Tipo: ${msg.type}`);
-        console.log(`[WA-${empresaId}] Corpo: ${msg.body}`);
-        console.log(`[WA-${empresaId}] Timestamp: ${msg.timestamp}`);
-        console.log(`[WA-${empresaId}] FromMe: ${msg.fromMe}`);
-        
-        // Ignorar mensagens de newsletter e status
-        if (msg.from.includes('newsletter') || msg.from.includes('status') || msg.from.includes('broadcast')) {
-            console.log(`[WA-${empresaId}] 📨 Mensagem de newsletter/broadcast ignorada`);
-            return;
-        }
-        
-        const messageContent = msg.body || getDefaultMessageContent(msg.type);
-        
-        console.log(`[WA-${empresaId}] 💾 Salvando no banco...`);
-        
-        await saveMessageToDatabase({
-            empresa_id: empresaId,
-            phone_number: msg.fromMe ? msg.to : msg.from,
-            message_type: msg.type,
-            content: messageContent,
-            is_from_me: msg.fromMe,
-            timestamp: new Date(msg.timestamp * 1000) // 🔥 CORRIGIR TIMESTAMP
-        });
-        
-        console.log(`[WA-${empresaId}] ✅ Mensagem salva com sucesso!`);
-
-    } catch (error) {
-        console.error(`[WA-${empresaId}] ❌ Erro ao processar mensagem:`, error);
-    }
-});
-
-    // 🔥 EVENTOS ADICIONAIS PARA DEBUG
-    client.on('loading_screen', (percent, message) => {
-        console.log(`[WA-${empresaId}] 📊 Carregando: ${percent}% - ${message}`);
-    });
-
-    client.on('message_ack', (msg, ack) => {
-        console.log(`[WA-${empresaId}] ✅ ACK: ${ack} para mensagem de ${msg.from}`);
-    });
-
     return client;
 }
 
-// ==================== FUNÇÃO PARA INICIALIZAR WHATSAPP CORRIGIDA ====================
+// ==================== FUNÇÃO PARA INICIALIZAR WHATSAPP ====================
 async function initializeWhatsAppForEmpresa(empresaId) {
     if (instanceCreationLocks.has(empresaId)) {
         console.log(`[WA-${empresaId}] ⏳ Inicialização já em andamento...`);
@@ -700,7 +805,6 @@ async function initializeWhatsAppForEmpresa(empresaId) {
             return false;
         }
 
-        // Verificar se já existe instância válida
         if (whatsappInstances.has(empresaId)) {
             const existingClient = whatsappInstances.get(empresaId);
             
@@ -761,7 +865,8 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         empresas_ativas: whatsappInstances.size,
         environment: IS_RENDER ? 'render' : 'local',
-        heartbeats_ativos: connectionHeartbeats.size
+        heartbeats_ativos: connectionHeartbeats.size,
+        uploads_path: UPLOADS_PATH
     });
 });
 
@@ -784,8 +889,6 @@ app.get('/status', async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro interno' });
     }
 });
-
-// [RESTANTE DOS ENDPOINTS PERMANECE IGUAL...]
 
 // LISTAR EMPRESAS
 app.get('/empresas', authenticateToken, async (req, res) => {
@@ -965,7 +1068,7 @@ app.post('/whatsapp/restart/:empresa_id', authenticateToken, async (req, res) =>
     }
 });
 
-// ENVIAR MENSAGEM
+// 🔥 ENVIAR MENSAGEM DE TEXTO
 app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
     try {
         const { empresa_id } = req.params;
@@ -1038,6 +1141,220 @@ app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
     }
 });
 
+// 🔥 ENVIAR MÍDIA (IMAGEM, VÍDEO, ÁUDIO, DOCUMENTO)
+app.post('/whatsapp/send-media/:empresa_id', authenticateToken, upload.single('media'), async (req, res) => {
+    try {
+        const { empresa_id } = req.params;
+        const { to, caption = '' } = req.body;
+        const empresaId = parseInt(empresa_id);
+
+        if (!to || !req.file) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Parâmetros "to" e arquivo de mídia são obrigatórios' 
+            });
+        }
+
+        const empresa = await getEmpresaById(empresaId);
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        if (empresa.whatsapp_status !== 'ready') {
+            return res.status(503).json({ 
+                success: false,
+                error: 'WhatsApp não está conectado',
+                current_status: empresa.whatsapp_status
+            });
+        }
+
+        const client = whatsappInstances.get(empresaId);
+        if (!client) {
+            return res.status(503).json({ 
+                success: false,
+                error: 'WhatsApp não inicializado para esta empresa' 
+            });
+        }
+
+        const chatId = normalizeNumber(to);
+        if (!chatId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Número de telefone inválido' 
+            });
+        }
+
+        const file = req.file;
+        console.log(`[WA-${empresaId}] 📎 Enviando mídia: ${file.originalname} (${file.mimetype})`);
+
+        // Criar MessageMedia
+        const mediaData = await createMediaFromFile(file.path, file.originalname);
+        const media = new MessageMedia(mediaData.mimetype, mediaData.data, file.originalname);
+
+        // Enviar mídia
+        await client.sendMessage(chatId, media, { caption: caption });
+        
+        const mediaType = getMediaType(file.mimetype);
+        const messageContent = caption || `📎 ${getDefaultMessageContent(mediaType)}`;
+        
+        await saveMessageToDatabase({
+            empresa_id: empresaId,
+            phone_number: chatId,
+            message_type: mediaType,
+            content: messageContent,
+            is_from_me: true,
+            media_url: `/uploads/${file.filename}`,
+            media_type: mediaType,
+            media_filename: file.filename
+        });
+
+        // Limpar arquivo temporário após envio
+        setTimeout(() => {
+            try {
+                fs.unlinkSync(file.path);
+                console.log(`[WA-${empresaId}] 🗑️  Arquivo temporário removido: ${file.path}`);
+            } catch (cleanupError) {
+                console.log(`[WA-${empresaId}] ℹ️  Erro ao limpar arquivo:`, cleanupError.message);
+            }
+        }, 5000);
+
+        res.json({ 
+            success: true, 
+            to: chatId,
+            empresa_id: empresaId,
+            message: 'Mídia enviada com sucesso',
+            media_type: mediaType,
+            filename: file.originalname,
+            caption: caption,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('[WHATSAPP] Erro ao enviar mídia:', error);
+        
+        // Limpar arquivo em caso de erro
+        if (req.file) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (cleanupError) {
+                console.log('Erro ao limpar arquivo temporário:', cleanupError.message);
+            }
+        }
+        
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro ao enviar mídia: ' + error.message 
+        });
+    }
+});
+
+// 🔥 ENVIAR MENSAGEM COM MÍDIA VIA URL/BASE64
+app.post('/whatsapp/send-media-url/:empresa_id', authenticateToken, async (req, res) => {
+    try {
+        const { empresa_id } = req.params;
+        const { to, media_url, media_type, caption = '', filename = 'file' } = req.body;
+        const empresaId = parseInt(empresa_id);
+
+        if (!to || !media_url) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Parâmetros "to" e "media_url" são obrigatórios' 
+            });
+        }
+
+        const empresa = await getEmpresaById(empresaId);
+        if (!empresa) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Empresa não encontrada' 
+            });
+        }
+
+        if (empresa.whatsapp_status !== 'ready') {
+            return res.status(503).json({ 
+                success: false,
+                error: 'WhatsApp não está conectado',
+                current_status: empresa.whatsapp_status
+            });
+        }
+
+        const client = whatsappInstances.get(empresaId);
+        if (!client) {
+            return res.status(503).json({ 
+                success: false,
+                error: 'WhatsApp não inicializado para esta empresa' 
+            });
+        }
+
+        const chatId = normalizeNumber(to);
+        if (!chatId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Número de telefone inválido' 
+            });
+        }
+
+        console.log(`[WA-${empresaId}] 📎 Enviando mídia via URL: ${media_type}`);
+
+        let media;
+        if (media_url.startsWith('data:')) {
+            // Base64 direct
+            const matches = media_url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+                throw new Error('Formato base64 inválido');
+            }
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            media = new MessageMedia(mimeType, base64Data, filename);
+        } else {
+            // URL - baixar e converter
+            const response = await fetch(media_url);
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const base64Data = buffer.toString('base64');
+            const mimeType = response.headers.get('content-type') || 'application/octet-stream';
+            media = new MessageMedia(mimeType, base64Data, filename);
+        }
+
+        // Enviar mídia
+        await client.sendMessage(chatId, media, { caption: caption });
+        
+        const messageContent = caption || `📎 ${getDefaultMessageContent(media_type)}`;
+        
+        await saveMessageToDatabase({
+            empresa_id: empresaId,
+            phone_number: chatId,
+            message_type: media_type,
+            content: messageContent,
+            is_from_me: true,
+            media_url: media_url,
+            media_type: media_type,
+            media_filename: filename
+        });
+
+        res.json({ 
+            success: true, 
+            to: chatId,
+            empresa_id: empresaId,
+            message: 'Mídia enviada com sucesso',
+            media_type: media_type,
+            filename: filename,
+            caption: caption,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('[WHATSAPP] Erro ao enviar mídia via URL:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro ao enviar mídia: ' + error.message 
+        });
+    }
+});
+
 // LISTAR CONVERSAS
 app.get('/messages/conversations/:empresa_id', authenticateToken, async (req, res) => {
     try {
@@ -1066,100 +1383,6 @@ app.get('/messages/conversations/:empresa_id', authenticateToken, async (req, re
         res.status(500).json({ 
             success: false,
             error: 'Erro interno' 
-        });
-    }
-});
-
-// 🔥 SINCRONIZAR MENSAGENS EXISTENTES DO WHATSAPP
-app.post('/whatsapp/sync-messages/:empresa_id', authenticateToken, async (req, res) => {
-    try {
-        const { empresa_id } = req.params;
-        const { limit = 50 } = req.body;
-        const empresaId = parseInt(empresa_id);
-
-        const empresa = await getEmpresaById(empresaId);
-        if (!empresa) {
-            return res.status(404).json({ 
-                success: false,
-                error: 'Empresa não encontrada' 
-            });
-        }
-
-        if (empresa.whatsapp_status !== 'ready') {
-            return res.status(503).json({ 
-                success: false,
-                error: 'WhatsApp não está conectado',
-                current_status: empresa.whatsapp_status
-            });
-        }
-
-        const client = whatsappInstances.get(empresaId);
-        if (!client) {
-            return res.status(503).json({ 
-                success: false,
-                error: 'WhatsApp não inicializado para esta empresa' 
-            });
-        }
-
-        console.log(`[WA-${empresaId}] 🔄 Sincronizando mensagens...`);
-
-        // Buscar chats recentes
-        const chats = await client.getChats();
-        let totalMessages = 0;
-        let syncedConversations = 0;
-
-        // Sincronizar últimos chats
-        for (const chat of chats.slice(0, limit)) {
-            try {
-                console.log(`[WA-${empresaId}] 💬 Sincronizando chat: ${chat.name || chat.id.user}`);
-                
-                // Buscar mensagens do chat
-                const messages = await chat.fetchMessages({ limit: 100 });
-                
-                for (const msg of messages) {
-                    // Ignorar mensagens de broadcast/newsletter
-                    if (msg.from.includes('newsletter') || msg.from.includes('status') || msg.from.includes('broadcast')) {
-                        continue;
-                    }
-
-                    const messageContent = msg.body || getDefaultMessageContent(msg.type);
-                    
-                    await saveMessageToDatabase({
-                        empresa_id: empresaId,
-                        phone_number: msg.fromMe ? msg.to : msg.from,
-                        message_type: msg.type,
-                        content: messageContent,
-                        is_from_me: msg.fromMe,
-                        timestamp: new Date(msg.timestamp * 1000) // Converter timestamp do WhatsApp
-                    });
-                    
-                    totalMessages++;
-                }
-                
-                syncedConversations++;
-                
-            } catch (chatError) {
-                console.error(`[WA-${empresaId}] ❌ Erro ao sincronizar chat:`, chatError.message);
-            }
-        }
-
-        res.json({
-            success: true,
-            empresa_id: empresaId,
-            message: 'Mensagens sincronizadas com sucesso',
-            stats: {
-                conversations_synced: syncedConversations,
-                messages_synced: totalMessages,
-                total_conversations: chats.length
-            },
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        console.error('[SYNC] Erro ao sincronizar mensagens:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Erro ao sincronizar mensagens: ' + error.message 
         });
     }
 });
@@ -1218,11 +1441,19 @@ app.get('/', (req, res) => {
     res.json({
         success: true,
         message: '🚀 API WhatsApp para Bubble - Online',
-        version: '7.0',
+        version: '8.0',
         environment: IS_RENDER ? 'render' : 'local',
         database: 'SQLite Persistente',
         database_path: DB_PATH,
         sessions_path: SESSIONS_PATH,
+        uploads_path: UPLOADS_PATH,
+        features: [
+            '❤️  Heartbeat para conexão persistente',
+            '📎 Envio de mídias (imagens, vídeos, áudios, documentos)',
+            '🔄 Reconexão automática',
+            '📊 Monitoramento contínuo',
+            '🚫 Filtro de newsletters/broadcasts'
+        ],
         endpoints: {
             public: [
                 'GET  /health',
@@ -1235,6 +1466,8 @@ app.get('/', (req, res) => {
                 'POST /whatsapp/initialize/:empresa_id',
                 'POST /whatsapp/restart/:empresa_id',
                 'POST /whatsapp/send/:empresa_id',
+                'POST /whatsapp/send-media/:empresa_id',
+                'POST /whatsapp/send-media-url/:empresa_id',
                 'GET  /messages/conversations/:empresa_id',
                 'GET  /messages/all-conversation/:empresa_id/:phone'
             ]
@@ -1256,16 +1489,17 @@ async function startServer() {
         console.log(`🌍 Ambiente: ${IS_RENDER ? 'RENDER' : 'LOCAL'}`);
         console.log(`💾 Banco: ${DB_PATH}`);
         console.log(`📁 Sessions: ${SESSIONS_PATH}`);
+        console.log(`📎 Uploads: ${UPLOADS_PATH}`);
         
         server.listen(PORT, () => {
             console.log(`✅ API rodando na porta ${PORT}`);
             console.log(`🔐 Token fixo: ${FIXED_TOKENS[0]}`);
-            console.log(`📱 Versão: 7.0 - Heartbeat e Conexão Persistente`);
-            console.log(`🔥 Novas funcionalidades:`);
-            console.log(`   ❤️  Heartbeat a cada 30s para manter conexão`);
+            console.log(`📱 Versão: 8.0 - Heartbeat + Mídias`);
+            console.log(`🔥 Funcionalidades ativas:`);
+            console.log(`   ❤️  Heartbeat a cada 30s`);
+            console.log(`   📎 Envio de mídias completo`);
             console.log(`   🔄 Reconexão automática`);
-            console.log(`   📊 Monitoramento contínuo do estado`);
-            console.log(`   🚫 Filtro de newsletters/broadcasts`);
+            console.log(`   📊 Monitoramento contínuo`);
         });
     } catch (error) {
         console.error('❌ Erro ao iniciar servidor:', error);
@@ -1277,7 +1511,6 @@ async function startServer() {
 process.on('SIGINT', async () => {
     console.log('🔌 Encerrando servidor...');
     
-    // Parar todos os heartbeats
     for (const [empresaId] of connectionHeartbeats) {
         stopConnectionHeartbeat(empresaId);
     }
