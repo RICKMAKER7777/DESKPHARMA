@@ -1,4 +1,4 @@
-// index.js - Versão 7.4 (Puppeteer Fix para Render)
+// index.js - Versão 7.5 (Puppeteer com Chromium)
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -9,12 +9,14 @@ import pkg from 'whatsapp-web.js';
 import sqlite3 from 'sqlite3';
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
-import util from 'util';
+import { fileURLToPath } from 'url';
 
 const { Client, LocalAuth } = pkg;
 const app = express();
 const server = http.createServer(app);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 10000;
 const ORIGIN = process.env.ALLOWED_ORIGIN || '*';
@@ -131,9 +133,9 @@ async function updateWhatsAppStatus(id, status, qr = null, error = null) {
     [status, qr, error, id]);
 }
 
-// ====== PUPPETEER FIX PARA RENDER ======
+// ====== PUPPETEER CONFIG COM CHROMIUM ======
 function getPuppeteerConfig() {
-  // No Render, precisamos usar o Chrome do sistema ou configurar corretamente
+  // Configuração otimizada para Render com Chromium
   const config = {
     headless: true,
     args: [
@@ -142,39 +144,23 @@ function getPuppeteerConfig() {
       '--disable-dev-shm-usage',
       '--disable-accelerated-2d-canvas',
       '--no-first-run',
-      '--no-zygote',
+      '--no-zygote', 
       '--disable-gpu',
       '--single-process',
-      '--user-data-dir=/tmp/chrome'
+      '--user-data-dir=/tmp/chrome',
+      '--disable-web-security',
+      '--disable-features=site-per-process',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding'
     ],
+    ignoreHTTPSErrors: true,
     timeout: 60000
   };
 
-  // Tentar diferentes caminhos do Chrome
-  const possibleChromePaths = [
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable', 
-    '/usr/bin/chromium-browser',
-    '/usr/bin/chromium',
-    '/snap/bin/chromium',
-    process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : null,
-    process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : null
-  ].filter(Boolean);
-
-  for (const chromePath of possibleChromePaths) {
-    if (fs.existsSync(chromePath)) {
-      console.log(`[PUPPETEER] ✅ Usando Chrome em: ${chromePath}`);
-      config.executablePath = chromePath;
-      break;
-    }
-  }
-
-  if (!config.executablePath) {
-    console.log('[PUPPETEER] ⚠️  Chrome não encontrado, usando padrão do sistema');
-    // Deixa o Puppeteer usar o Chrome padrão do sistema
-  }
-
+  // No Render, o Puppeteer vai usar o Chromium baixado automaticamente
+  console.log('[PUPPETEER] 🔧 Usando Chromium do Puppeteer');
+  
   return config;
 }
 
@@ -182,11 +168,6 @@ function createWhatsAppInstance(empresaId) {
   console.log(`[WA-${empresaId}] 🚀 Criando instância WhatsApp`);
   
   const puppeteerConfig = getPuppeteerConfig();
-  console.log(`[WA-${empresaId}] Puppeteer config:`, {
-    executablePath: puppeteerConfig.executablePath || 'default',
-    headless: puppeteerConfig.headless,
-    argsCount: puppeteerConfig.args.length
-  });
 
   const client = new Client({
     authStrategy: new LocalAuth({
@@ -194,7 +175,7 @@ function createWhatsAppInstance(empresaId) {
       dataPath: path.join(SESSIONS_PATH, `empresa_${empresaId}`)
     }),
     puppeteer: puppeteerConfig,
-    qrMaxRetries: 3,
+    qrMaxRetries: 5,
     restartOnAuthFail: true,
     takeoverOnConflict: true,
   });
@@ -243,17 +224,11 @@ function createWhatsAppInstance(empresaId) {
   client.on('disconnected', async (reason) => {
     console.log(`[WA-${empresaId}] 🔌 Desconectado:`, reason);
     await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
-    
-    if (isReady) {
-      console.log(`[WA-${empresaId}] 🔄 Tentando reconectar em 15s...`);
-      setTimeout(() => {
-        try {
-          client.initialize();
-        } catch (e) {
-          console.log(`[WA-${empresaId}] ❌ Erro na reconexão:`, e.message);
-        }
-      }, 15000);
-    }
+  });
+
+  client.on('message', async (msg) => {
+    if (msg.from.includes('status') || msg.from.includes('broadcast')) return;
+    console.log(`[WA-${empresaId}] 📩 Mensagem de ${msg.from}: ${msg.body?.substring(0, 50)}...`);
   });
 
   return client;
@@ -269,22 +244,29 @@ async function initializeWhatsAppForEmpresa(empresaId) {
       throw new Error(`Empresa ${empresaId} não encontrada`);
     }
 
-    // Limpar sessões anteriores se existirem
+    // Limpar sessões anteriores
     const sessionPath = path.join(SESSIONS_PATH, `empresa_${empresaId}`);
     if (fs.existsSync(sessionPath)) {
       console.log(`[WA-${empresaId}] 🗑️ Limpando sessão anterior`);
       fs.rmSync(sessionPath, { recursive: true, force: true });
     }
 
-    // Criar e configurar cliente
+    // Criar cliente
     const client = createWhatsAppInstance(empresaId);
     whatsappInstances.set(empresaId, client);
 
-    // Atualizar status para inicializando
+    // Atualizar status
     await updateWhatsAppStatus(empresaId, 'initializing', null, null);
 
-    // Inicializar
-    await client.initialize();
+    // Inicializar com timeout mais longo para baixar Chromium
+    console.log(`[WA-${empresaId}] ⏳ Inicializando (pode demorar para baixar Chromium)...`);
+    
+    const initializationPromise = client.initialize();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout na inicialização (120s)')), 120000)
+    );
+
+    await Promise.race([initializationPromise, timeoutPromise]);
     
     console.log(`[WA-${empresaId}] ✅ Instância inicializada com sucesso`);
     return true;
@@ -293,7 +275,6 @@ async function initializeWhatsAppForEmpresa(empresaId) {
     console.log(`[WA-${empresaId}] ❌ Erro na inicialização:`, error.message);
     await updateWhatsAppStatus(empresaId, 'error', null, error.message);
     
-    // Limpar instância em caso de erro
     if (whatsappInstances.has(empresaId)) {
       whatsappInstances.delete(empresaId);
     }
@@ -302,15 +283,18 @@ async function initializeWhatsAppForEmpresa(empresaId) {
   }
 }
 
-// ====== ROTAS SIMPLIFICADAS ======
+// ====== ROTAS ======
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    version: '7.4',
+    version: '7.5',
     environment: 'render',
-    message: 'Sistema DeskPharma - Puppeteer Fix',
-    status: '/status',
-    initialize: '/whatsapp/initialize/1 ou /2'
+    message: 'Sistema DeskPharma - Puppeteer com Chromium',
+    endpoints: {
+      status: '/status',
+      qr: '/qr/:id',
+      initialize: '/whatsapp/initialize/1 ou /2'
+    }
   });
 });
 
@@ -323,7 +307,8 @@ app.get('/qr/:empresa_id', (req, res) => {
   } else {
     res.status(404).json({ 
       success: false, 
-      error: 'QR Code não encontrado ou ainda não gerado' 
+      error: 'QR Code não encontrado',
+      tip: 'Aguarde a inicialização ou verifique o status'
     });
   }
 });
@@ -332,7 +317,8 @@ app.get('/health', (req, res) => {
   res.json({ 
     success: true, 
     status: 'online',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    chromium: 'embedded'
   });
 });
 
@@ -340,7 +326,6 @@ app.get('/status', async (req, res) => {
   try {
     const empresas = await dbAll('SELECT * FROM empresas ORDER BY id');
     
-    // Verificar arquivos de QR
     const qrFiles = {};
     empresas.forEach(empresa => {
       const qrFile = path.join(QR_PATH, `qr_${empresa.id}.png`);
@@ -355,7 +340,8 @@ app.get('/status', async (req, res) => {
       system: {
         platform: process.platform,
         node_version: process.version,
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        chromium: 'puppeteer-bundled'
       }
     });
   } catch (error) {
@@ -366,16 +352,24 @@ app.get('/status', async (req, res) => {
 app.post('/whatsapp/initialize/:empresa_id', authenticateToken, async (req, res) => {
   const id = parseInt(req.params.empresa_id);
   
+  if (id !== 1 && id !== 2) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Use empresa ID 1 ou 2',
+      available_empresas: [1, 2]
+    });
+  }
+  
   try {
     console.log(`[API] Inicializando WhatsApp para empresa ${id}`);
     await initializeWhatsAppForEmpresa(id);
     
     res.json({ 
       success: true, 
-      message: 'WhatsApp inicializando...',
+      message: 'WhatsApp inicializando... (pode demorar na primeira vez)',
       empresa_id: id,
       qr_url: `https://teste-deploy-rjuf.onrender.com/qr/${id}`,
-      note: 'Acesse a URL do QR Code em alguns segundos'
+      note: 'Primeira inicialização pode demorar para baixar o Chromium'
     });
     
   } catch (error) {
@@ -383,7 +377,7 @@ app.post('/whatsapp/initialize/:empresa_id', authenticateToken, async (req, res)
     res.status(500).json({ 
       success: false, 
       error: error.message,
-      tip: 'Problema com Puppeteer/Chrome no ambiente Render'
+      tip: 'Na primeira execução, aguarde o download do Chromium (pode levar 1-2 minutos)'
     });
   }
 });
@@ -394,9 +388,19 @@ async function startServer() {
   server.listen(PORT, () => {
     console.log(`✅ API rodando na porta ${PORT}`);
     console.log('🌍 Ambiente: Render');
-    console.log('📱 Versão: 7.4 - Puppeteer Fix');
+    console.log('📱 Versão: 7.5 - Puppeteer com Chromium');
+    console.log('⚡ Primeira inicialização pode demorar para baixar Chromium');
     console.log('🔗 Status: https://teste-deploy-rjuf.onrender.com/status');
   });
 }
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🔄 Recebido SIGTERM, encerrando gracefully...');
+  server.close(() => {
+    console.log('✅ Servidor encerrado');
+    process.exit(0);
+  });
+});
 
 startServer().catch(console.error);
