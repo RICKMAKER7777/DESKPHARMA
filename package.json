@@ -1,1 +1,26 @@
-{"name":"wa-like-bridge","version":"1.0.0","type":"module","main":"index.js","license":"MIT","scripts":{"start":"node index.js"},"dependencies":{"@react-three/drei":"^10.7.6","cors":"^2.8.5","dotenv":"^16.4.5","express":"^4.19.2","qrcode":"^1.5.3","socket.io":"^4.7.5","whatsapp-web.js":"^1.26.0"}}
+{
+  "name": "deskpharma-system",
+  "version": "1.0.0",
+  "description": "Sistema completo de gestão farmacêutica",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "http": "^0.0.1-security",
+    "socket.io": "^4.7.5",
+    "cors": "^2.8.5",
+    "qrcode": "^1.5.3",
+    "whatsapp-web.js": "^1.23.0",
+    "sqlite3": "^5.1.6",
+    "multer": "^1.4.5-lts.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "keywords": ["pharmacy", "management", "whatsapp", "system"],
+  "author": "DeskPharma",
+  "license": "MIT"
+}
