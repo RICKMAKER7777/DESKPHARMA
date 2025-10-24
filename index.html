@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeskPharma Pro - Sistema de Gestão</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/animations.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="logo-animation">
+                <i class="fas fa-comment-medical"></i>
+                <span>DeskPharma Pro</span>
+            </div>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen hidden">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="logo">
+                    <i class="fas fa-comment-medical"></i>
+                    <h1>DeskPharma Pro</h1>
+                </div>
+                <p class="tagline">Sistema de Gestão Integrada para Farmácias</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" placeholder="Usuário" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Senha" required>
+                    <button type="button" class="toggle-password">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <button type="submit" class="login-btn">
+                    <span>Entrar</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>Novo por aqui? <a href="#" id="registerLink">Crie sua conta</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="registerScreen" class="register-screen hidden">
+        <div class="register-container">
+            <div class="register-header">
+                <button class="back-btn" id="backToLogin">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Criar Conta</h2>
+            </div>
+
+            <form id="registerForm" class="register-form">
+                <div class="form-row">
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="regName" placeholder="Nome completo" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="regEmail" placeholder="E-mail" required>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <i class="fas fa-building"></i>
+                    <input type="text" id="regCompany" placeholder="Nome da Empresa" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" id="regCnpj" placeholder="CNPJ" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" id="regPhone" placeholder="Telefone" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="regPassword" placeholder="Senha" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="regConfirmPassword" placeholder="Confirmar Senha" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="register-btn">
+                    <span>Criar Conta</span>
+                    <i class="fas fa-check"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-comment-medical"></i>
+                    <span>DeskPharma</span>
+                </div>
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-menu">
+                <div class="menu-section">
+                    <h3>PRINCIPAL</h3>
+                    <a href="#dashboard" class="menu-item active" data-page="dashboard">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#whatsapp" class="menu-item" data-page="whatsapp">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                        <span class="menu-badge online">2</span>
+                    </a>
+                </div>
+
+                <div class="menu-section">
+                    <h3>GERENCIAR</h3>
+                    <a href="#empresas" class="menu-item" data-page="empresas">
+                        <i class="fas fa-building"></i>
+                        <span>Empresas</span>
+                    </a>
+                    <a href="#usuarios" class="menu-item" data-page="usuarios">
+                        <i class="fas fa-users"></i>
+                        <span>Usuários</span>
+                    </a>
+                    <a href="#deliverys" class="menu-item" data-page="deliverys">
+                        <i class="fas fa-motorcycle"></i>
+                        <span>Deliverys</span>
+                    </a>
+                </div>
+
+                <div class="menu-section">
+                    <h3>CONFIGURAÇÕES</h3>
+                    <a href="#metas" class="menu-item" data-page="metas">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Metas</span>
+                    </a>
+                    <a href="#relatorios" class="menu-item" data-page="relatorios">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Relatórios</span>
+                    </a>
+                    <a href="#configuracoes" class="menu-item" data-page="configuracoes">
+                        <i class="fas fa-cog"></i>
+                        <span>Configurações</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img src="" alt="User" id="userAvatar">
+                    </div>
+                    <div class="user-info">
+                        <span id="userName">Usuário</span>
+                        <span class="user-role" id="userRole">Supervisor</span>
+                    </div>
+                    <button class="logout-btn" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboardPage" class="page active">
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                    <div class="header-actions">
+                        <div class="date-selector">
+                            <i class="fas fa-calendar"></i>
+                            <span>Hoje</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fab fa-whatsapp"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Mensagens Hoje</h3>
+                            <span class="stat-number" id="messagesToday">0</span>
+                            <span class="stat-trend positive">+12%</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Empresas Ativas</h3>
+                            <span class="stat-number" id="activeCompanies">0</span>
+                            <span class="stat-trend positive">+2</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Usuários Online</h3>
+                            <span class="stat-number" id="onlineUsers">0</span>
+                            <span class="stat-trend negative">-1</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Metas Atingidas</h3>
+                            <span class="stat-number" id="goalsAchieved">0%</span>
+                            <span class="stat-trend positive">+5%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-grid">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Atividade de Mensagens</h3>
+                            <div class="chart-legend">
+                                <span class="legend-item"><i class="fas fa-circle sent"></i> Enviadas</span>
+                                <span class="legend-item"><i class="fas fa-circle received"></i> Recebidas</span>
+                            </div>
+                        </div>
+                        <div class="chart-placeholder">
+                            <canvas id="messagesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="recent-activity">
+                        <div class="activity-header">
+                            <h3>Atividade Recente</h3>
+                            <button class="view-all">Ver Tudo</button>
+                        </div>
+                        <div class="activity-list" id="recentActivity">
+                            <!-- Atividades serão carregadas aqui -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WhatsApp Page -->
+            <div id="whatsappPage" class="page">
+                <div class="page-header">
+                    <h1>WhatsApp Business</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="newSessionBtn">
+                            <i class="fas fa-plus"></i>
+                            Nova Sessão
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sessions-grid" id="sessionsContainer">
+                    <!-- Sessões WhatsApp serão carregadas aqui -->
+                </div>
+
+                <!-- Modal Nova Sessão -->
+                <div id="newSessionModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Nova Sessão WhatsApp</h3>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="newSessionForm">
+                                <div class="input-group">
+                                    <label>Empresa</label>
+                                    <select id="sessionCompany" required>
+                                        <option value="">Selecione uma empresa</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>Número</label>
+                                    <input type="text" id="sessionNumber" placeholder="+55 (11) 99999-9999" required>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="button" class="btn btn-secondary modal-cancel">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Iniciar Sessão</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal QR Code -->
+                <div id="qrModal" class="modal">
+                    <div class="modal-content qr-modal">
+                        <div class="modal-header">
+                            <h3>Conectar WhatsApp</h3>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="qr-container">
+                                <img id="qrImage" src="" alt="QR Code">
+                                <p>Escaneie o QR Code com o WhatsApp</p>
+                                <div class="qr-status">
+                                    <i class="fas fa-sync-alt fa-spin"></i>
+                                    <span>Aguardando escaneamento...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empresas Page -->
+            <div id="empresasPage" class="page">
+                <div class="page-header">
+                    <h1>Gerenciar Empresas</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="newCompanyBtn">
+                            <i class="fas fa-plus"></i>
+                            Nova Empresa
+                        </button>
+                    </div>
+                </div>
+
+                <div class="companies-grid" id="companiesContainer">
+                    <!-- Empresas serão carregadas aqui -->
+                </div>
+            </div>
+
+            <!-- Outras páginas serão adicionadas aqui -->
+        </main>
+    </div>
+
+    <!-- Notification System -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/companies.js"></script>
+    <script src="js/whatsapp.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
