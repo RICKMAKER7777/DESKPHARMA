@@ -1,6 +1,6 @@
 {
   "name": "deskpharma-system",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Sistema WhatsApp API para Bubble - Render Edition",
   "main": "index.js",
   "type": "module",
@@ -17,8 +17,7 @@
     "whatsapp-web.js": "^1.23.0",
     "sqlite3": "^5.1.6",
     "jsonwebtoken": "^9.0.2",
-    "puppeteer-core": "^22.7.1",
-    "chrome-aws-lambda": "^10.1.0"
+    "puppeteer-core": "^19.11.1"
   },
   "engines": {
     "node": ">=18.x"
