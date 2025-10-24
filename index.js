@@ -1,4 +1,4 @@
-// index.js - Versão 7.3 (Correção QR Code no Render)
+// index.js - Versão 7.4 (Puppeteer Fix para Render)
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -7,7 +7,6 @@ import cors from 'cors';
 import QRCode from 'qrcode';
 import pkg from 'whatsapp-web.js';
 import sqlite3 from 'sqlite3';
-import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
@@ -19,7 +18,6 @@ const server = http.createServer(app);
 
 const PORT = process.env.PORT || 10000;
 const ORIGIN = process.env.ALLOWED_ORIGIN || '*';
-const JWT_SECRET = process.env.JWT_SECRET || 'deskpharma_secret_key_2024';
 
 // === CONFIG RENDER ===
 const IS_RENDER = process.env.RENDER === 'true' || true;
@@ -37,15 +35,6 @@ for (const dir of [path.dirname(DB_PATH), SESSIONS_PATH, QR_PATH]) {
       console.log(`[SYSTEM] ❌ Erro ao criar diretório ${dir}:`, err.message);
     }
   }
-}
-
-// Verificar permissões de escrita
-try {
-  fs.writeFileSync(path.join(QR_PATH, 'test.txt'), 'test');
-  fs.unlinkSync(path.join(QR_PATH, 'test.txt'));
-  console.log('[SYSTEM] ✅ Permissões de escrita OK em', QR_PATH);
-} catch (err) {
-  console.log('[SYSTEM] ❌ Sem permissão de escrita em', QR_PATH, err.message);
 }
 
 app.use(cors({ origin: ORIGIN === '*' ? true : ORIGIN, credentials: true }));
@@ -107,16 +96,6 @@ async function createTables() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
-  await dbExec(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      empresa_id INTEGER NOT NULL,
-      phone_number TEXT,
-      message_type TEXT,
-      content TEXT,
-      is_from_me BOOLEAN DEFAULT 0,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
   
   const count = await dbGet('SELECT COUNT(*) as c FROM empresas');
   if (count.c === 0) {
@@ -152,66 +131,79 @@ async function updateWhatsAppStatus(id, status, qr = null, error = null) {
     [status, qr, error, id]);
 }
 
-async function saveMessageToDatabase({ empresa_id, phone_number, message_type, content, is_from_me }) {
-  await dbRun(
-    `INSERT INTO messages (empresa_id,phone_number,message_type,content,is_from_me,timestamp) VALUES (?,?,?,?,?,?)`,
-    [empresa_id, phone_number, message_type, content, is_from_me ? 1 : 0, new Date().toISOString()]
-  );
-}
+// ====== PUPPETEER FIX PARA RENDER ======
+function getPuppeteerConfig() {
+  // No Render, precisamos usar o Chrome do sistema ou configurar corretamente
+  const config = {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu',
+      '--single-process',
+      '--user-data-dir=/tmp/chrome'
+    ],
+    timeout: 60000
+  };
 
-function startConnectionHeartbeat(empresaId, client) {
-  if (connectionHeartbeats.has(empresaId)) clearInterval(connectionHeartbeats.get(empresaId));
-  const hb = setInterval(async () => {
-    try {
-      const state = await client.getState();
-      console.log(`[WA-${empresaId}] ❤️ Heartbeat: ${state}`);
-      if (state !== 'CONNECTED') await client.initialize();
-    } catch (e) {
-      console.log(`[WA-${empresaId}] ❌ Heartbeat erro:`, e.message);
+  // Tentar diferentes caminhos do Chrome
+  const possibleChromePaths = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable', 
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/snap/bin/chromium',
+    process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : null,
+    process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : null
+  ].filter(Boolean);
+
+  for (const chromePath of possibleChromePaths) {
+    if (fs.existsSync(chromePath)) {
+      console.log(`[PUPPETEER] ✅ Usando Chrome em: ${chromePath}`);
+      config.executablePath = chromePath;
+      break;
     }
-  }, 30000);
-  connectionHeartbeats.set(empresaId, hb);
-}
-
-async function clearProblematicSession(empresaId) {
-  const p = path.join(SESSIONS_PATH, `empresa_${empresaId}`);
-  if (fs.existsSync(p)) {
-    console.log(`[WA-${empresaId}] 🗑️ Limpando sessão problemática`);
-    fs.rmSync(p, { recursive: true, force: true });
   }
+
+  if (!config.executablePath) {
+    console.log('[PUPPETEER] ⚠️  Chrome não encontrado, usando padrão do sistema');
+    // Deixa o Puppeteer usar o Chrome padrão do sistema
+  }
+
+  return config;
 }
 
 function createWhatsAppInstance(empresaId) {
   console.log(`[WA-${empresaId}] 🚀 Criando instância WhatsApp`);
   
+  const puppeteerConfig = getPuppeteerConfig();
+  console.log(`[WA-${empresaId}] Puppeteer config:`, {
+    executablePath: puppeteerConfig.executablePath || 'default',
+    headless: puppeteerConfig.headless,
+    argsCount: puppeteerConfig.args.length
+  });
+
   const client = new Client({
     authStrategy: new LocalAuth({
       clientId: `empresa_${empresaId}`,
       dataPath: path.join(SESSIONS_PATH, `empresa_${empresaId}`)
     }),
-    puppeteer: {
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--single-process'
-      ],
-      timeout: 60000
-    },
+    puppeteer: puppeteerConfig,
     qrMaxRetries: 3,
     restartOnAuthFail: true,
     takeoverOnConflict: true,
-    takeoverTimeoutMs: 30000,
   });
 
   let isReady = false;
-  let qrGenerated = false;
+
+  client.on('loading_screen', (percent, message) => {
+    console.log(`[WA-${empresaId}] 📱 Carregando: ${percent}% - ${message}`);
+  });
 
   client.on('qr', async (qr) => {
     console.log(`[WA-${empresaId}] 🔄 QR Code recebido`);
@@ -224,7 +216,6 @@ function createWhatsAppInstance(empresaId) {
       console.log(`[WA-${empresaId}] 🌐 QR Code URL: ${url}`);
       
       await updateWhatsAppStatus(empresaId, 'qr_code', url, null);
-      qrGenerated = true;
       
     } catch (error) {
       console.log(`[WA-${empresaId}] ❌ Erro ao gerar QR Code:`, error.message);
@@ -236,17 +227,12 @@ function createWhatsAppInstance(empresaId) {
     console.log(`[WA-${empresaId}] ✅ WhatsApp conectado e pronto`);
     isReady = true;
     await updateWhatsAppStatus(empresaId, 'ready', null, null);
-    startConnectionHeartbeat(empresaId, client);
     
-    // Limpar QR Code após conexão bem-sucedida
+    // Limpar QR Code após conexão
     const qrFile = path.join(QR_PATH, `qr_${empresaId}.png`);
     if (fs.existsSync(qrFile)) {
       fs.unlinkSync(qrFile);
     }
-  });
-
-  client.on('authenticated', () => {
-    console.log(`[WA-${empresaId}] 🔑 Autenticado`);
   });
 
   client.on('auth_failure', async (msg) => {
@@ -258,35 +244,16 @@ function createWhatsAppInstance(empresaId) {
     console.log(`[WA-${empresaId}] 🔌 Desconectado:`, reason);
     await updateWhatsAppStatus(empresaId, 'disconnected', null, reason);
     
-    if (connectionHeartbeats.has(empresaId)) {
-      clearInterval(connectionHeartbeats.get(empresaId));
-      connectionHeartbeats.delete(empresaId);
-    }
-    
     if (isReady) {
-      console.log(`[WA-${empresaId}] 🔄 Tentando reconectar em 10s...`);
+      console.log(`[WA-${empresaId}] 🔄 Tentando reconectar em 15s...`);
       setTimeout(() => {
         try {
           client.initialize();
         } catch (e) {
           console.log(`[WA-${empresaId}] ❌ Erro na reconexão:`, e.message);
         }
-      }, 10000);
+      }, 15000);
     }
-  });
-
-  client.on('message', async (msg) => {
-    if (msg.from.includes('status') || msg.from.includes('broadcast') || msg.from.includes('newsletter')) return;
-    
-    console.log(`[WA-${empresaId}] 📩 Mensagem de ${msg.from}: ${msg.body?.substring(0, 50)}...`);
-    
-    await saveMessageToDatabase({
-      empresa_id: empresaId,
-      phone_number: msg.fromMe ? msg.to : msg.from,
-      message_type: msg.type,
-      content: msg.body || `[${msg.type}]`,
-      is_from_me: msg.fromMe
-    });
   });
 
   return client;
@@ -302,8 +269,12 @@ async function initializeWhatsAppForEmpresa(empresaId) {
       throw new Error(`Empresa ${empresaId} não encontrada`);
     }
 
-    // Limpar sessão problemática se existir
-    await clearProblematicSession(empresaId);
+    // Limpar sessões anteriores se existirem
+    const sessionPath = path.join(SESSIONS_PATH, `empresa_${empresaId}`);
+    if (fs.existsSync(sessionPath)) {
+      console.log(`[WA-${empresaId}] 🗑️ Limpando sessão anterior`);
+      fs.rmSync(sessionPath, { recursive: true, force: true });
+    }
 
     // Criar e configurar cliente
     const client = createWhatsAppInstance(empresaId);
@@ -312,13 +283,8 @@ async function initializeWhatsAppForEmpresa(empresaId) {
     // Atualizar status para inicializando
     await updateWhatsAppStatus(empresaId, 'initializing', null, null);
 
-    // Inicializar com timeout
-    const initializationPromise = client.initialize();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout na inicialização (60s)')), 60000)
-    );
-
-    await Promise.race([initializationPromise, timeoutPromise]);
+    // Inicializar
+    await client.initialize();
     
     console.log(`[WA-${empresaId}] ✅ Instância inicializada com sucesso`);
     return true;
@@ -336,33 +302,28 @@ async function initializeWhatsAppForEmpresa(empresaId) {
   }
 }
 
-// ====== ROTAS ======
+// ====== ROTAS SIMPLIFICADAS ======
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    version: '7.3',
+    version: '7.4',
     environment: 'render',
-    message: 'Sistema DeskPharma Online - QR Code Fix Aplicado',
-    endpoints: {
-      status: '/status',
-      qr: '/qr/:empresa_id', 
-      initialize: '/whatsapp/initialize/:empresa_id',
-      send: '/whatsapp/send/:empresa_id'
-    }
+    message: 'Sistema DeskPharma - Puppeteer Fix',
+    status: '/status',
+    initialize: '/whatsapp/initialize/1 ou /2'
   });
 });
 
 app.get('/qr/:empresa_id', (req, res) => {
   const file = path.join(QR_PATH, `qr_${req.params.empresa_id}.png`);
-  console.log(`[QR] Buscando arquivo: ${file}`);
+  console.log(`[QR] Buscando: ${file}`);
   
   if (fs.existsSync(file)) {
     res.sendFile(file);
   } else {
     res.status(404).json({ 
       success: false, 
-      error: 'QR Code não encontrado',
-      tip: 'A instância pode ainda estar inicializando ou ter falhado'
+      error: 'QR Code não encontrado ou ainda não gerado' 
     });
   }
 });
@@ -370,11 +331,8 @@ app.get('/qr/:empresa_id', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     success: true, 
-    status: 'online', 
-    environment: 'render',
-    timestamp: new Date().toISOString(),
-    qr_path: QR_PATH,
-    sessions_path: SESSIONS_PATH
+    status: 'online',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -382,7 +340,7 @@ app.get('/status', async (req, res) => {
   try {
     const empresas = await dbAll('SELECT * FROM empresas ORDER BY id');
     
-    // Verificar arquivos de QR existentes
+    // Verificar arquivos de QR
     const qrFiles = {};
     empresas.forEach(empresa => {
       const qrFile = path.join(QR_PATH, `qr_${empresa.id}.png`);
@@ -393,14 +351,11 @@ app.get('/status', async (req, res) => {
       success: true,
       empresas,
       whatsapp_instances: whatsappInstances.size,
-      heartbeats: connectionHeartbeats.size,
       qr_files: qrFiles,
       system: {
         platform: process.platform,
         node_version: process.version,
-        memory: process.memoryUsage(),
-        uptime: process.uptime(),
-        qr_path: QR_PATH
+        uptime: process.uptime()
       }
     });
   } catch (error) {
@@ -420,7 +375,7 @@ app.post('/whatsapp/initialize/:empresa_id', authenticateToken, async (req, res)
       message: 'WhatsApp inicializando...',
       empresa_id: id,
       qr_url: `https://teste-deploy-rjuf.onrender.com/qr/${id}`,
-      note: 'Acesse a URL do QR Code em 10-30 segundos'
+      note: 'Acesse a URL do QR Code em alguns segundos'
     });
     
   } catch (error) {
@@ -428,47 +383,7 @@ app.post('/whatsapp/initialize/:empresa_id', authenticateToken, async (req, res)
     res.status(500).json({ 
       success: false, 
       error: error.message,
-      empresa_id: id 
-    });
-  }
-});
-
-app.post('/whatsapp/send/:empresa_id', authenticateToken, async (req, res) => {
-  const id = parseInt(req.params.empresa_id);
-  const { to, message } = req.body;
-  
-  const client = whatsappInstances.get(id);
-  if (!client) {
-    return res.status(503).json({ 
-      success: false, 
-      error: 'Instância WhatsApp não ativa. Inicialize primeiro.' 
-    });
-  }
-  
-  try {
-    const chatId = normalizeNumber(to);
-    console.log(`[WA-${id}] 📤 Enviando mensagem para: ${chatId}`);
-    
-    await client.sendMessage(chatId, message);
-    await saveMessageToDatabase({ 
-      empresa_id: id, 
-      phone_number: chatId, 
-      message_type: 'text', 
-      content: message, 
-      is_from_me: true 
-    });
-    
-    res.json({ 
-      success: true, 
-      to: chatId, 
-      message: 'Mensagem enviada com sucesso' 
-    });
-    
-  } catch (error) {
-    console.log(`[WA-${id}] ❌ Erro ao enviar mensagem:`, error.message);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+      tip: 'Problema com Puppeteer/Chrome no ambiente Render'
     });
   }
 });
@@ -479,20 +394,9 @@ async function startServer() {
   server.listen(PORT, () => {
     console.log(`✅ API rodando na porta ${PORT}`);
     console.log('🌍 Ambiente: Render');
-    console.log('📱 Versão: 7.3 - QR Code Fix');
-    console.log('📁 QR Path:', QR_PATH);
-    console.log('📁 Sessions Path:', SESSIONS_PATH);
+    console.log('📱 Versão: 7.4 - Puppeteer Fix');
     console.log('🔗 Status: https://teste-deploy-rjuf.onrender.com/status');
   });
 }
-
-// Tratamento de erros não capturados
-process.on('unhandledRejection', (reason, promise) => {
-  console.log('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (error) => {
-  console.log('❌ Uncaught Exception:', error);
-});
 
 startServer().catch(console.error);
